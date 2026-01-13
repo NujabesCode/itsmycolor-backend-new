@@ -1,0 +1,28 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        port: ${{ secrets.EC2_PORT }}
+        script: |
+          cd itsmycolor-backend
+          git remote set-url origin https://github.com/BOLTLAB-DEV/itsmycolor-backend.git
+          # 저장소 인증 설정
+          git config --global credential.helper store
+          echo "https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
+          git pull
+          npm i --force
+          npm run build
+          pm2 restart itsmycolor-backend || pm2 start dist/main.js --name itsmycolor-backend 

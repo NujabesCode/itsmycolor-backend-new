@@ -1,0 +1,16 @@
+export enum StyleCategory {
+  TRENDY = '트렌디(Trendy)',
+  SPORTY = '스포티(Sporty)',
+  AVANTGARDE = '아방가르드(Avant-garde)',
+  ROMANTIC = '로맨틱(Romantic)',
+  BOHEMIAN = '보헤미안(Bohemian)',
+  CLASSIC = '클래식(Classic)',
+  MODERN = '모던(Modern)',
+  RETRO = '레트로(Retro)',
+  HIPHOP = '힙합(Hip-hop)',
+  NORMCORE = '놈코어(Normcore)',
+  MINIMAL = '미니멀',
+  FEMININE = '페미닌',
+  STREET = '스트릿',
+  VINTAGE = '빈티지',
+} 
