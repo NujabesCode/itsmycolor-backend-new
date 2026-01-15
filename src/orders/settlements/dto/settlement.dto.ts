@@ -1,7 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
+﻿import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNumber, IsEnum, IsOptional, IsDateString } from 'class-validator';
 import { SettlementStatus } from '../entities/settlement.entity';
-import { Brand } from 'src/brands/entities/brand.entity';
+import { Brand } from '../../../brands/entities/brand.entity';
 
 export class CreateSettlementDto {
   @ApiProperty({ description: '정산 월', example: '2024-06' })

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   HttpCode,
@@ -16,8 +16,8 @@ import { ApiDoc } from '../common/decorators/swagger.decorator';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { NaverAuthGuard } from './guards/naver-auth.guard';
 import { KakaoAuthGuard } from './guards/kakao-auth.guard';
-import { GetUser } from 'src/common/decorators/get-user.decorator';
-import { User } from 'src/users/entities/user.entity';
+import { GetUser } from '../common/decorators/get-user.decorator';
+import { User } from '../users/entities/user.entity';
 import { Request } from 'express';
 
 @ApiTags('인증')

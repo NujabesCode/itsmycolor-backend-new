@@ -1,14 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+﻿import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from 'src/users/entities/user.entity';
-import { BrandsService } from 'src/brands/brands.service';
-import { BrandStatus } from 'src/brands/entities/brand.entity';
-import { CouponsService } from 'src/coupons/coupons.service';
-import { CouponType } from 'src/coupons/entities/coupon.entity';
+import { User, UserRole } from '../users/entities/user.entity';
+import { BrandsService } from '../brands/brands.service';
+import { BrandStatus } from '../brands/entities/brand.entity';
+import { CouponsService } from '../coupons/coupons.service';
+import { CouponType } from '../coupons/entities/coupon.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 // ADM-010: IP 기반 실패 차단을 위한 메모리 저장소 (실제 운영에서는 Redis 사용 권장)

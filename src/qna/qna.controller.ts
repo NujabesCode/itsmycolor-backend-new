@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -31,8 +31,8 @@ import {
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { QnaResponseDto } from './dto/qna-response.dto';
 import { PaginationDto } from './dto/pagination.dto';
-import { BrandGuard } from 'src/auth/guards/brand.guard';
-import { NotUserGuard } from 'src/auth/guards/not-user.guard';
+import { BrandGuard } from '../auth/guards/brand.guard';
+import { NotUserGuard } from '../auth/guards/not-user.guard';
 
 @ApiTags('문의')
 @Controller('qna')

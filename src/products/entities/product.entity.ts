@@ -15,7 +15,7 @@ import { StyleCategory } from '../../common/types/style-category.enum';
 import { Review } from '../../reviews/entities/review.entity';
 import { Qna } from '../../qna/entities/qna.entity';
 import { Brand } from '../../brands/entities/brand.entity';
-import { OrderItem } from 'src/orders/entities/order-item.entity';
+import { OrderItem } from '../../orders/entities/order-item.entity';
 import { ProductLike } from './product-like.entity';
 import { Gender } from '../../common/types/gender.enum';
 import { MajorCategory } from '../../common/types/major-category.enum';

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -21,7 +21,7 @@ import {
   ReturnRequestResponseDto,
 } from './dto/return-request.dto';
 import { ReturnStatus } from './entities/return-request.entity';
-import { BrandGuard } from 'src/auth/guards/brand.guard';
+import { BrandGuard } from '../../auth/guards/brand.guard';
 
 @ApiTags('반품 관리')
 @Controller('returns')

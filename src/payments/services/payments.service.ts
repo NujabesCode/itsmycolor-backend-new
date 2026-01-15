@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Injectable,
   NotFoundException,
@@ -10,9 +10,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Payment } from '../entities/payment.entity';
 import { Repository } from 'typeorm';
 import { VerifyPaymentDto } from '../dto/verify-payment.dto';
-import { OrdersService } from 'src/orders/orders.service';
-import { OrderStatus } from 'src/orders/entities/order.entity';
-import { NotificationsService } from 'src/notifications/notifications.service';
+import { OrdersService } from '../../orders/orders.service';
+import { OrderStatus } from '../../orders/entities/order.entity';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 @Injectable()
 export class PaymentsService {

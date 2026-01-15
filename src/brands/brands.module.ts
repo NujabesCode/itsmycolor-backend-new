@@ -1,13 +1,13 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BrandsController } from './brands.controller';
 import { BrandsService } from './brands.service';
 import { Brand } from './entities/brand.entity';
 import { BrandLike } from './entities/brand-like.entity';
 import { FilesModule } from '../files/files.module';
-import { UsersModule } from 'src/users/users.module';
+import { UsersModule } from '../users/users.module';
 import { BrandConnectToken } from './entities/brand-connect-token.entity';
-import { NotificationsModule } from 'src/notifications/notifications.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [

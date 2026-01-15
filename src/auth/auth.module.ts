@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
@@ -9,8 +9,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { NaverStrategy } from './strategies/naver.strategy';
 import { KakaoStrategy } from './strategies/kakao.strategy';
-import { BrandsModule } from 'src/brands/brands.module';
-import { CouponsModule } from 'src/coupons/coupons.module';
+import { BrandsModule } from '../brands/brands.module';
+import { CouponsModule } from '../coupons/coupons.module';
 
 @Module({
   imports: [

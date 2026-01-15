@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -24,7 +24,7 @@ import { User } from '../users/entities/user.entity';
 import { BrandStatus } from './entities/brand.entity';
 import { PaginationDto } from './dto/pagination.dto';
 import { UpdateBrandStatusDto } from './dto/update-brand-status.dto';
-import { BrandGuard } from 'src/auth/guards/brand.guard';
+import { BrandGuard } from '../auth/guards/brand.guard';
 
 @ApiTags('브랜드')
 @Controller('brands')

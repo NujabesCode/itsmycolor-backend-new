@@ -1,12 +1,12 @@
-import { forwardRef, Module } from '@nestjs/common';
+﻿import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PaymentsController } from './payments.controller';
 import { TossService } from './services/toss.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Payment } from './entities/payment.entity';
-import { OrdersModule } from 'src/orders/orders.module';
+import { OrdersModule } from '../orders/orders.module';
 import { PaymentsService } from './services/payments.service';
-import { NotificationsModule } from 'src/notifications/notifications.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -43,7 +43,7 @@ import { BrandGuard } from '../auth/guards/brand.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { TryOnRequestDto } from './dto/try-on-request.dto';
 import { TryOnResponseDto } from './dto/try-on-response.dto';
-import { NotUserGuard } from 'src/auth/guards/not-user.guard';
+import { NotUserGuard } from '../auth/guards/not-user.guard';
 import { GetUser } from '../common/decorators/get-user.decorator';
 import { User } from '../users/entities/user.entity';
 

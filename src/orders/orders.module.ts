@@ -1,12 +1,12 @@
-import { forwardRef, Module } from '@nestjs/common';
+﻿import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { UsersModule } from '../users/users.module';
-import { PaymentsModule } from 'src/payments/payments.module';
-import { CouponsModule } from 'src/coupons/coupons.module';
+import { PaymentsModule } from '../payments/payments.module';
+import { CouponsModule } from '../coupons/coupons.module';
 
 @Module({
   imports: [

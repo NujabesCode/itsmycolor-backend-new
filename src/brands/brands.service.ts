@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
@@ -10,9 +10,9 @@ import { UpdateBrandDto } from './dto/update-brand.dto';
 import { BrandResponseDto } from './dto/brand-response.dto';
 import { FilesService } from '../files/files.service';
 import { PaginationDto, PaginatedResponseDto } from './dto/pagination.dto';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../users/users.service';
 import { BrandConnectToken } from './entities/brand-connect-token.entity';
-import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { UpdateBrandStatusDto } from './dto/update-brand-status.dto';
 
 @Injectable()
