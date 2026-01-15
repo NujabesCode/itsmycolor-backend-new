@@ -12,8 +12,12 @@ function calculateRelativePath(fromFile, toModule) {
   const toFile = path.join(distDir, toPath + '.js');
   const toDir = path.dirname(toFile);
   
-  // Calculate relative path from fromDir to toDir
-  const relative = path.relative(fromDir, toDir).replace(/\\/g, '/');
+  // Get absolute paths
+  const fromAbs = path.resolve(fromDir);
+  const toAbs = path.resolve(toDir);
+  
+  // Calculate relative path
+  const relative = path.relative(fromAbs, toAbs).replace(/\\/g, '/');
   const fileName = path.basename(toFile, '.js');
   
   // Build result path
@@ -22,6 +26,11 @@ function calculateRelativePath(fromFile, toModule) {
   // Normalize: ensure it starts with ./ or ../
   if (!result.startsWith('.')) {
     result = './' + result;
+  }
+  
+  // Fix empty relative path
+  if (result === '.' || result === './') {
+    result = './' + fileName;
   }
   
   return result;
