@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 function calculateRelativePath(fromFile, toModule) {
-  // fromFile: dist/products/entities/product.entity.js
+  // fromFile: dist/products/entities/product.entity.js (absolute path)
   // toModule: src/orders/entities/order-item.entity
   // result: ../../orders/entities/order-item.entity
   
@@ -12,21 +12,23 @@ function calculateRelativePath(fromFile, toModule) {
   const toFile = path.resolve(distDir, toPath + '.js');
   const toDir = path.dirname(toFile);
   
-  // Calculate relative path using path.relative
-  const relative = path.relative(fromDir, toDir).replace(/\\/g, '/');
-  const fileName = path.basename(toFile, '.js');
+  // Calculate relative path
+  let relative = path.relative(fromDir, toDir);
   
-  // Build result path
-  let result = relative ? `${relative}/${fileName}` : fileName;
+  // Normalize path separators
+  relative = relative.replace(/\\/g, '/');
   
-  // Normalize: ensure it starts with ./ or ../
-  if (!result.startsWith('.')) {
-    result = './' + result;
+  // If relative is empty, they're in the same directory
+  if (relative === '' || relative === '.') {
+    relative = '.';
   }
   
-  // Fix: if relative is empty (same directory), use ./
-  if (relative === '' || relative === '.') {
-    result = './' + fileName;
+  const fileName = path.basename(toFile, '.js');
+  let result = relative === '.' ? `./${fileName}` : `${relative}/${fileName}`;
+  
+  // Ensure it starts with ./
+  if (!result.startsWith('.')) {
+    result = './' + result;
   }
   
   return result;
@@ -54,7 +56,10 @@ function fixPaths(dir) {
       
       if (content !== original) {
         fs.writeFileSync(filePath, content, 'utf8');
-        console.log(`Fixed: ${filePath} -> ${relativePath}`);
+        const matches = original.match(regex);
+        if (matches) {
+          console.log(`Fixed: ${path.relative(path.join(__dirname, '..', 'dist'), filePath)}`);
+        }
       }
     }
   });
