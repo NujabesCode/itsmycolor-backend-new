@@ -6,22 +6,24 @@ function calculateRelativePath(fromFile, toModule) {
   // toModule: src/orders/entities/order-item.entity
   // result: ../../orders/entities/order-item.entity
   
-  const fromDir = path.dirname(fromFile);
   const distDir = path.join(__dirname, '..', 'dist');
+  const fromDir = path.dirname(fromFile);
   const toPath = toModule.replace('src/', '');
   const toFile = path.join(distDir, toPath + '.js');
+  const toDir = path.dirname(toFile);
   
-  const relative = path.relative(fromDir, path.dirname(toFile));
-  let result = path.join(relative, path.basename(toFile, '.js')).replace(/\\/g, '/');
+  // Calculate relative path from fromDir to toDir
+  const relative = path.relative(fromDir, toDir).replace(/\\/g, '/');
+  const fileName = path.basename(toFile, '.js');
+  
+  // Build result path
+  let result = relative ? `${relative}/${fileName}` : fileName;
   
   // Normalize: ensure it starts with ./ or ../
   if (!result.startsWith('.')) {
     result = './' + result;
   }
-  // Fix empty or single dot
-  if (result === '.' || result === './') {
-    result = './';
-  }
+  
   return result;
 }
 
