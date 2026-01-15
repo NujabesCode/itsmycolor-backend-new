@@ -12,14 +12,16 @@ function calculateRelativePath(fromFile, toModule) {
   const toFile = path.join(distDir, toPath + '.js');
   
   const relative = path.relative(fromDir, path.dirname(toFile));
-  let result = path.join(relative, path.basename(toFile)).replace(/\\/g, '/');
+  let result = path.join(relative, path.basename(toFile, '.js')).replace(/\\/g, '/');
   
-  // Normalize path separators and ensure it starts with ./ or ../
+  // Normalize: ensure it starts with ./ or ../
   if (!result.startsWith('.')) {
     result = './' + result;
   }
-  // Remove .js extension if present (Node.js will add it automatically)
-  result = result.replace(/\.js$/, '');
+  // Fix empty or single dot
+  if (result === '.' || result === './') {
+    result = './';
+  }
   return result;
 }
 
