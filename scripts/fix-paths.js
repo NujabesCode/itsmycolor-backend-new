@@ -6,18 +6,14 @@ function calculateRelativePath(fromFile, toModule) {
   // toModule: src/orders/entities/order-item.entity
   // result: ../../orders/entities/order-item.entity
   
-  const distDir = path.join(__dirname, '..', 'dist');
-  const fromDir = path.dirname(fromFile);
+  const distDir = path.resolve(__dirname, '..', 'dist');
+  const fromDir = path.dirname(path.resolve(fromFile));
   const toPath = toModule.replace('src/', '');
-  const toFile = path.join(distDir, toPath + '.js');
+  const toFile = path.resolve(distDir, toPath + '.js');
   const toDir = path.dirname(toFile);
   
-  // Get absolute paths
-  const fromAbs = path.resolve(fromDir);
-  const toAbs = path.resolve(toDir);
-  
-  // Calculate relative path
-  const relative = path.relative(fromAbs, toAbs).replace(/\\/g, '/');
+  // Calculate relative path using path.relative
+  const relative = path.relative(fromDir, toDir).replace(/\\/g, '/');
   const fileName = path.basename(toFile, '.js');
   
   // Build result path
@@ -28,15 +24,15 @@ function calculateRelativePath(fromFile, toModule) {
     result = './' + result;
   }
   
-  // Fix empty relative path
-  if (result === '.' || result === './') {
+  // Fix: if relative is empty (same directory), use ./
+  if (relative === '' || relative === '.') {
     result = './' + fileName;
   }
   
   return result;
 }
 
-function fixPaths(dir, baseDir) {
+function fixPaths(dir) {
   const files = fs.readdirSync(dir);
   
   files.forEach(file => {
@@ -44,7 +40,7 @@ function fixPaths(dir, baseDir) {
     const stat = fs.statSync(filePath);
     
     if (stat.isDirectory()) {
-      fixPaths(filePath, baseDir);
+      fixPaths(filePath);
     } else if (file.endsWith('.js')) {
       let content = fs.readFileSync(filePath, 'utf8');
       const original = content;
@@ -58,7 +54,7 @@ function fixPaths(dir, baseDir) {
       
       if (content !== original) {
         fs.writeFileSync(filePath, content, 'utf8');
-        console.log(`Fixed: ${filePath}`);
+        console.log(`Fixed: ${filePath} -> ${relativePath}`);
       }
     }
   });
@@ -67,7 +63,7 @@ function fixPaths(dir, baseDir) {
 const distDir = path.join(__dirname, '..', 'dist');
 if (fs.existsSync(distDir)) {
   console.log('Fixing paths in dist folder...');
-  fixPaths(distDir, distDir);
+  fixPaths(distDir);
   console.log('Done!');
 } else {
   console.log('dist folder not found');
