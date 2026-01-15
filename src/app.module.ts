@@ -55,7 +55,7 @@ import * as Joi from 'joi';
       }),
     }),
     UsersModule,
-    AuthModule,
+    AuthModule.forRoot(),
     ColorAnalysisModule,
     OrdersModule,
     QnaModule,
