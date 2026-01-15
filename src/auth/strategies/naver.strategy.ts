@@ -10,8 +10,12 @@ export class NaverStrategy extends PassportStrategy(Strategy, 'naver') {
     private configService: ConfigService,
     private usersService: UsersService,
   ) {
+    const clientID = configService.get<string>('NAVER_CLIENT_ID');
+    if (!clientID) {
+      throw new Error('Naver OAuth is not configured. Set NAVER_CLIENT_ID in .env file.');
+    }
     super({
-      clientID: configService.get<string>('NAVER_CLIENT_ID') || '',
+      clientID: clientID,
       clientSecret: configService.get<string>('NAVER_CLIENT_SECRET') || '',
       callbackURL: configService.get<string>('NAVER_CALLBACK_URL') || '',
     });

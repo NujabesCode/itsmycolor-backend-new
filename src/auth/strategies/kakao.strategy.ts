@@ -10,8 +10,12 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     private configService: ConfigService,
     private usersService: UsersService,
   ) {
+    const clientID = configService.get<string>('KAKAO_CLIENT_ID');
+    if (!clientID) {
+      throw new Error('Kakao OAuth is not configured. Set KAKAO_CLIENT_ID in .env file.');
+    }
     super({
-      clientID: configService.get<string>('KAKAO_CLIENT_ID') || '',
+      clientID: clientID,
       clientSecret: configService.get<string>('KAKAO_CLIENT_SECRET') || '',
       callbackURL: configService.get<string>('KAKAO_CALLBACK_URL') || '',
     });
