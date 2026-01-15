@@ -164,6 +164,16 @@ export class AuthService {
     this.ipFailureMap.set(clientIp, record);
   }
 
+  // IP 잠금 해제 (임시 관리용)
+  clearIpLock(clientIp?: string) {
+    if (clientIp) {
+      this.ipFailureMap.delete(clientIp);
+    } else {
+      // 모든 IP 잠금 해제
+      this.ipFailureMap.clear();
+    }
+  }
+
   async socialLogin(user: User) {
     const { name, phone } = user;
 

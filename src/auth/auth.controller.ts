@@ -85,4 +85,17 @@ export class AuthController {
   async kakaoAuth(@GetUser() user: User) {
     return await this.authService.socialLogin(user);
   }
+
+  // IP 잠금 해제 (임시 관리용)
+  @Post('clear-ip-lock')
+  @HttpCode(HttpStatus.OK)
+  @ApiDoc({
+    summary: 'IP 잠금 해제',
+    description: '모든 IP 잠금을 해제합니다. (임시 관리용)',
+  })
+  async clearIpLock() {
+    // 모든 IP 잠금 해제
+    this.authService.clearIpLock();
+    return { message: '모든 IP 잠금이 해제되었습니다.' };
+  }
 }
