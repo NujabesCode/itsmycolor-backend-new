@@ -394,29 +394,103 @@ export class ProductsService {
   }> {
     const assignments = await this.getMainAssignmentsMap();
 
-    // 어드민 배치가 정답: 배치가 없으면 null 반환(자동 대체 없음)
     const normalize = (k: string) => k.trim().replace(/\s+/g, ' ').toLowerCase();
-    const findByColorSeason = (colorSeason: ColorSeason) => {
+    
+    // 할당이 없을 때 자동으로 상품을 가져오는 헬퍼 함수
+    const findByColorSeason = async (colorSeason: ColorSeason): Promise<ProductResponseDto | null> => {
       const product = assignments.get(normalize(colorSeason));
-      return product ? new ProductResponseDto(product) : null;
+      if (product) {
+        return new ProductResponseDto(product);
+      }
+      
+      // 할당이 없으면 해당 컬러에 맞는 상품 자동 조회
+      const fallbackProduct = await this.productRepository
+        .createQueryBuilder('product')
+        .leftJoinAndSelect('product.brandEntity', 'brand')
+        .where('product.isDeleted = FALSE')
+        .andWhere('product.isAvailable = TRUE')
+        .andWhere('product.recommendedColorSeason LIKE :colorSeason', {
+          colorSeason: `%${colorSeason}%`,
+        })
+        .orderBy('product.viewCount', 'DESC')
+        .addOrderBy('product.createdAt', 'DESC')
+        .limit(1)
+        .getOne();
+      
+      return fallbackProduct ? new ProductResponseDto(fallbackProduct) : null;
     };
-    const findByBodyType = (bodyType: BodyType) => {
-      const product = assignments.get(normalize(bodyType));
-      return product ? new ProductResponseDto(product) : null;
+    
+    const findByBodyType = async (bodyType: BodyType): Promise<ProductResponseDto | null> => {
+      // slotKey는 'Straight', 'Wave', 'Natural' 형태일 수 있으므로 여러 형태로 시도
+      const possibleKeys = [
+        normalize(bodyType),
+        normalize(BodyType.STRAIGHT === bodyType ? 'Straight' : BodyType.WAVE === bodyType ? 'Wave' : 'Natural'),
+      ];
+      
+      let product: Product | null = null;
+      for (const key of possibleKeys) {
+        product = assignments.get(key) || null;
+        if (product) break;
+      }
+      
+      if (product) {
+        return new ProductResponseDto(product);
+      }
+      
+      // 할당이 없으면 해당 체형에 맞는 상품 자동 조회
+      const fallbackProduct = await this.productRepository
+        .createQueryBuilder('product')
+        .leftJoinAndSelect('product.brandEntity', 'brand')
+        .where('product.isDeleted = FALSE')
+        .andWhere('product.isAvailable = TRUE')
+        .andWhere('product.recommendedBodyType = :bodyType', { bodyType })
+        .orderBy('product.viewCount', 'DESC')
+        .addOrderBy('product.createdAt', 'DESC')
+        .limit(1)
+        .getOne();
+      
+      return fallbackProduct ? new ProductResponseDto(fallbackProduct) : null;
     };
 
+    // 모든 조회를 병렬로 실행
+    const [
+      springBright,
+      springLight,
+      summerLight,
+      summerMute,
+      autumnMute,
+      autumnDeep,
+      winterDark,
+      winterBright,
+      straight,
+      wave,
+      natural,
+    ] = await Promise.all([
+      findByColorSeason(ColorSeason.SPRING_BRIGHT),
+      findByColorSeason(ColorSeason.SPRING_LIGHT),
+      findByColorSeason(ColorSeason.SUMMER_LIGHT),
+      findByColorSeason(ColorSeason.SUMMER_MUTE),
+      findByColorSeason(ColorSeason.AUTUMN_MUTE),
+      findByColorSeason(ColorSeason.AUTUMN_DEEP),
+      findByColorSeason(ColorSeason.WINTER_DARK),
+      findByColorSeason(ColorSeason.WINTER_BRIGHT),
+      findByBodyType(BodyType.STRAIGHT),
+      findByBodyType(BodyType.WAVE),
+      findByBodyType(BodyType.NATURAL),
+    ]);
+
     return {
-      [ColorSeason.SPRING_BRIGHT]: findByColorSeason(ColorSeason.SPRING_BRIGHT),
-      [ColorSeason.SPRING_LIGHT]: findByColorSeason(ColorSeason.SPRING_LIGHT),
-      [ColorSeason.SUMMER_LIGHT]: findByColorSeason(ColorSeason.SUMMER_LIGHT),
-      [ColorSeason.SUMMER_MUTE]: findByColorSeason(ColorSeason.SUMMER_MUTE),
-      [ColorSeason.AUTUMN_MUTE]: findByColorSeason(ColorSeason.AUTUMN_MUTE),
-      [ColorSeason.AUTUMN_DEEP]: findByColorSeason(ColorSeason.AUTUMN_DEEP),
-      [ColorSeason.WINTER_DARK]: findByColorSeason(ColorSeason.WINTER_DARK),
-      [ColorSeason.WINTER_BRIGHT]: findByColorSeason(ColorSeason.WINTER_BRIGHT),
-      [BodyType.STRAIGHT]: findByBodyType(BodyType.STRAIGHT),
-      [BodyType.WAVE]: findByBodyType(BodyType.WAVE),
-      [BodyType.NATURAL]: findByBodyType(BodyType.NATURAL),
+      [ColorSeason.SPRING_BRIGHT]: springBright,
+      [ColorSeason.SPRING_LIGHT]: springLight,
+      [ColorSeason.SUMMER_LIGHT]: summerLight,
+      [ColorSeason.SUMMER_MUTE]: summerMute,
+      [ColorSeason.AUTUMN_MUTE]: autumnMute,
+      [ColorSeason.AUTUMN_DEEP]: autumnDeep,
+      [ColorSeason.WINTER_DARK]: winterDark,
+      [ColorSeason.WINTER_BRIGHT]: winterBright,
+      [BodyType.STRAIGHT]: straight,
+      [BodyType.WAVE]: wave,
+      [BodyType.NATURAL]: natural,
     }
   }
 
