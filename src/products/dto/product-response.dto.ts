@@ -27,8 +27,8 @@ export class ProductResponseDto {
   @ApiProperty({ description: '재고 수량' })
   stockQuantity: number;
 
-  @ApiProperty({ description: '상품 이미지 URL' })
-  imageUrl: string;
+  @ApiProperty({ description: '상품 이미지 URL', required: false })
+  imageUrl: string | null;
 
   @ApiProperty({
     description: '추천 퍼스널 컬러',
@@ -82,7 +82,7 @@ export class ProductResponseDto {
     this.originalPriceKr = product.originalPriceKr ?? undefined;
     this.originalPriceUsd = product.originalPriceUsd ?? undefined;
     this.stockQuantity = product.stockQuantity;
-    this.imageUrl = product.imageUrl;
+    this.imageUrl = product.imageUrl || null;
     this.recommendedColorSeason = product.recommendedColorSeason;
     this.recommendedBodyType = product.recommendedBodyType;
     this.recommendedGender = product.recommendedGender;
