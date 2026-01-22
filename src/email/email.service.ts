@@ -299,15 +299,47 @@ export class EmailService {
   async sendPasswordResetEmail(dto: SendPasswordResetDto): Promise<{ message: string }> {
     const { email } = dto;
 
-    // 사용자 존재 여부 확인
-    const user = await this.userRepository.findOne({
-      where: { email },
+    console.log(`[비밀번호 재설정 요청] 이메일: "${email}"`);
+    console.log(`[비밀번호 재설정 요청] 이메일 길이: ${email?.length || 0}`);
+    console.log(`[비밀번호 재설정 요청] 이메일 공백 제거 후: "${email?.trim() || ''}"`);
+
+    // 이메일 앞뒤 공백 제거 및 소문자 변환 (일관성 유지)
+    const normalizedEmail = email?.trim().toLowerCase();
+
+    // 사용자 존재 여부 확인 (정확한 매칭)
+    let user = await this.userRepository.findOne({
+      where: { email: normalizedEmail },
     });
 
+    // 정확한 매칭이 안 되면 대소문자 무시 검색 시도
     if (!user) {
+      console.log(`[비밀번호 재설정 요청] 정확한 매칭 실패, 대소문자 무시 검색 시도`);
+      // TypeORM의 Like를 사용하여 대소문자 무시 검색
+      const users = await this.userRepository
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = LOWER(:email)', { email: normalizedEmail })
+        .getMany();
+      
+      if (users.length > 0) {
+        user = users[0];
+        console.log(`[비밀번호 재설정 요청] 대소문자 무시 검색으로 사용자 발견: ${user.email}`);
+      }
+    }
+
+    if (!user) {
+      console.error(`[비밀번호 재설정 요청] 사용자를 찾을 수 없음: "${normalizedEmail}"`);
+      // 디버깅을 위해 유사한 이메일 검색
+      const similarUsers = await this.userRepository
+        .createQueryBuilder('user')
+        .where('user.email LIKE :pattern', { pattern: `%${normalizedEmail.split('@')[0]}%` })
+        .limit(5)
+        .getMany();
+      console.log(`[비밀번호 재설정 요청] 유사한 이메일 검색 결과:`, similarUsers.map(u => u.email));
+      
       throw new BadRequestException('등록되지 않은 이메일입니다.');
     }
 
+    console.log(`[비밀번호 재설정 요청] 사용자 발견: ${user.email} (id: ${user.id})`);
     return this.generateAndSendResetLink(user);
   }
 
