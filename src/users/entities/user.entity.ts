@@ -122,6 +122,11 @@ export class User {
       const salt = await bcrypt.genSalt();
       this.password = await bcrypt.hash(this.password, salt);
     }
+    
+    // 이메일을 소문자로 정규화 (일관성 유지)
+    if (this.email) {
+      this.email = this.email.trim().toLowerCase();
+    }
   }
 
   async validatePassword(password: string): Promise<boolean> {

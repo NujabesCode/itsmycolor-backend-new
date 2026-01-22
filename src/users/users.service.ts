@@ -23,10 +23,14 @@ export class UsersService {
       throw new BadRequestException('비밀번호가 일치하지 않습니다.');
     }
 
-    // 이메일 중복 체크
-    const existingUser = await this.usersRepository.findOne({
-      where: { email: createUserDto.email },
-    });
+    // 이메일 정규화 (소문자 변환 및 공백 제거)
+    const normalizedEmail = createUserDto.email?.trim().toLowerCase();
+
+    // 이메일 중복 체크 (대소문자 무시)
+    const existingUser = await this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = LOWER(:email)', { email: normalizedEmail })
+      .getOne();
 
     if (existingUser) {
       throw new BadRequestException('이미 가입된 이메일입니다.');
@@ -34,13 +38,25 @@ export class UsersService {
 
     // 비밀번호 확인 필드는 저장하지 않음
     const { passwordConfirm, ...userData } = createUserDto;
+    // 이메일 정규화 적용
+    userData.email = normalizedEmail;
     const user = this.usersRepository.create(userData);
 
     return this.usersRepository.save(user);
   }
 
   async findOrCreate(email: string): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { email } });
+    // 이메일 정규화
+    const normalizedEmail = email?.trim().toLowerCase();
+    let user = await this.usersRepository.findOne({ where: { email: normalizedEmail } });
+    
+    // 정확한 매칭 실패 시 대소문자 무시 검색
+    if (!user) {
+      user = await this.usersRepository
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = LOWER(:email)', { email: normalizedEmail })
+        .getOne();
+    }
     if (user) {
       return user;
     }
@@ -63,7 +79,19 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return await this.usersRepository.findOne({ where: { email } });
+    // 이메일 정규화
+    const normalizedEmail = email?.trim().toLowerCase();
+    let user = await this.usersRepository.findOne({ where: { email: normalizedEmail } });
+    
+    // 정확한 매칭 실패 시 대소문자 무시 검색
+    if (!user) {
+      user = await this.usersRepository
+        .createQueryBuilder('user')
+        .where('LOWER(user.email) = LOWER(:email)', { email: normalizedEmail })
+        .getOne();
+    }
+    
+    return user;
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
