@@ -339,10 +339,13 @@ export class EmailService {
       await this.sendPasswordResetLinkEmail(user.email, token);
     } catch (error) {
       console.error('비밀번호 변경 링크 이메일 발송 실패:', error);
-      // 개발 환경에서는 콘솔에 출력
+      // 개발 환경에서는 콘솔에 토큰 출력
       if (process.env.NODE_ENV !== 'production') {
         console.log(`개발 모드 - 비밀번호 변경 토큰: ${user.email} -> ${token}`);
+        console.log(`개발 모드 - 비밀번호 변경 링크: ${this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001')}/find-password?token=${token}`);
       }
+      // 에러를 다시 던져서 사용자에게 알림
+      throw error;
     }
 
     return { message: '비밀번호 변경 링크를 이메일로 발송했습니다.' };
@@ -350,12 +353,32 @@ export class EmailService {
 
   private async sendPasswordResetLinkEmail(email: string, token: string): Promise<void> {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
-    const resetLink = `${frontendUrl}/find-password?token=${token}`;
+    // 토큰을 URL 인코딩하여 특수문자 문제 방지
+    const encodedToken = encodeURIComponent(token);
+    const resetLink = `${frontendUrl}/find-password?token=${encodedToken}`;
     const emailTemplate = this.generatePasswordResetEmailTemplate(resetLink);
     const smtpFrom = this.configService.get<string>('SMTP_FROM', 'noreply@wepick.co.kr');
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
 
-    if (this.transporter) {
-      // 실제 이메일 발송
+    if (!this.transporter) {
+      // SMTP 설정이 없는 경우
+      console.error('SMTP 설정이 없어 이메일을 발송할 수 없습니다.');
+      console.log(`=== 비밀번호 변경 링크 이메일 발송 시뮬레이션 ===`);
+      console.log(`받는 사람: ${email}`);
+      console.log(`제목: [잇츠마이컬러] 비밀번호 변경 링크`);
+      console.log(`변경 링크: ${resetLink}`);
+      console.log(`만료 시간: 1시간`);
+      console.log(`============================================`);
+      
+      // 프로덕션 환경에서는 에러 발생, 개발 환경에서는 허용
+      if (isProduction) {
+        throw new BadRequestException('SMTP 설정이 없어 이메일을 발송할 수 없습니다. 관리자에게 문의해주세요.');
+      }
+      return; // 개발 환경에서는 시뮬레이션만 하고 종료
+    }
+
+    // 실제 이메일 발송
+    try {
       const mailOptions = {
         from: `"잇츠마이컬러" <${smtpFrom}>`,
         to: email,
@@ -365,14 +388,9 @@ export class EmailService {
 
       await this.transporter.sendMail(mailOptions);
       console.log(`비밀번호 변경 링크 이메일 발송 완료: ${email}`);
-    } else {
-      // SMTP 설정이 없는 경우 콘솔 출력
-      console.log(`=== 비밀번호 변경 링크 이메일 발송 시뮬레이션 ===`);
-      console.log(`받는 사람: ${email}`);
-      console.log(`제목: [잇츠마이컬러] 비밀번호 변경 링크`);
-      console.log(`변경 링크: ${resetLink}`);
-      console.log(`만료 시간: 1시간`);
-      console.log(`============================================`);
+    } catch (error) {
+      console.error('이메일 발송 중 오류 발생:', error);
+      throw new BadRequestException('이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   }
 
@@ -478,28 +496,49 @@ export class EmailService {
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const { token, newPassword } = dto;
 
+    console.log(`[비밀번호 재설정] 토큰으로 비밀번호 변경 시도: ${token.substring(0, 10)}...`);
+
+    // 토큰으로 검색 (isUsed 체크 전에 먼저 확인)
     const resetToken = await this.passwordResetTokenRepository.findOne({
-      where: { token, isUsed: false },
+      where: { token },
       relations: ['user'],
     });
 
     if (!resetToken) {
+      console.error(`[비밀번호 재설정] 토큰을 찾을 수 없음: ${token.substring(0, 10)}...`);
       throw new BadRequestException('유효하지 않은 토큰입니다.');
     }
 
+    console.log(`[비밀번호 재설정] 토큰 발견: id=${resetToken.id}, isUsed=${resetToken.isUsed}, expiresAt=${resetToken.expiresAt}, now=${new Date()}`);
+
+    // 이미 사용된 토큰인지 확인
+    if (resetToken.isUsed) {
+      console.error(`[비밀번호 재설정] 이미 사용된 토큰: ${resetToken.id}`);
+      throw new BadRequestException('이미 사용된 링크입니다. 새로운 비밀번호 재설정 링크를 요청해주세요.');
+    }
+
     // 만료 시간 확인
-    if (new Date() > resetToken.expiresAt) {
+    const now = new Date();
+    if (now > resetToken.expiresAt) {
+      console.error(`[비밀번호 재설정] 토큰 만료: expiresAt=${resetToken.expiresAt}, now=${now}`);
       await this.passwordResetTokenRepository.delete({ id: resetToken.id });
-      throw new BadRequestException('토큰이 만료되었습니다.');
+      throw new BadRequestException('토큰이 만료되었습니다. 새로운 비밀번호 재설정 링크를 요청해주세요.');
     }
 
     // 새 비밀번호 해시화 및 저장
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await this.userRepository.update(resetToken.userId, { password: hashedPassword });
+    try {
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await this.userRepository.update(resetToken.userId, { password: hashedPassword });
+      console.log(`[비밀번호 재설정] 비밀번호 변경 성공: userId=${resetToken.userId}`);
 
-    // 토큰 사용 처리
-    resetToken.isUsed = true;
-    await this.passwordResetTokenRepository.save(resetToken);
+      // 토큰 사용 처리
+      resetToken.isUsed = true;
+      await this.passwordResetTokenRepository.save(resetToken);
+      console.log(`[비밀번호 재설정] 토큰 사용 처리 완료: tokenId=${resetToken.id}`);
+    } catch (error) {
+      console.error(`[비밀번호 재설정] 비밀번호 변경 실패:`, error);
+      throw new BadRequestException('비밀번호 변경 중 오류가 발생했습니다.');
+    }
 
     return {
       message: '비밀번호가 성공적으로 변경되었습니다.',
