@@ -496,11 +496,18 @@ export class EmailService {
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const { token, newPassword } = dto;
 
-    console.log(`[비밀번호 재설정] 토큰으로 비밀번호 변경 시도: ${token.substring(0, 10)}...`);
+    console.log(`[비밀번호 재설정] 토큰으로 비밀번호 변경 시도`);
+    console.log(`[비밀번호 재설정] 토큰 길이: ${token?.length || 0}`);
+    console.log(`[비밀번호 재설정] 토큰 앞 20자: ${token?.substring(0, 20) || '없음'}`);
+    console.log(`[비밀번호 재설정] 토큰 뒤 20자: ${token?.length > 20 ? token.substring(token.length - 20) : token || '없음'}`);
 
     // 토큰으로 검색 (isUsed 체크 전에 먼저 확인)
+    // 토큰 앞뒤 공백 제거
+    const trimmedToken = token?.trim();
+    console.log(`[비밀번호 재설정] 공백 제거 후 토큰 길이: ${trimmedToken?.length || 0}`);
+    
     const resetToken = await this.passwordResetTokenRepository.findOne({
-      where: { token },
+      where: { token: trimmedToken },
       relations: ['user'],
     });
 
