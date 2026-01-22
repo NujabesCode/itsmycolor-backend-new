@@ -61,7 +61,7 @@ export class UsersService {
       return user;
     }
 
-    const newUser = this.usersRepository.create({ email });
+    const newUser = this.usersRepository.create({ email: normalizedEmail });
     return this.usersRepository.save(newUser);
   }
 
