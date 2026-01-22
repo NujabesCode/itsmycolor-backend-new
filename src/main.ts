@@ -1,5 +1,6 @@
-import * as crypto from 'crypto';
-(global as any).crypto = crypto;
+// Node.js 18+에서는 crypto가 이미 global에 있으므로 설정 불필요
+// import * as crypto from 'crypto';
+// (global as any).crypto = crypto;
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -40,8 +41,10 @@ async function bootstrap() {
           }
           return `${error.property} validation failed`;
         });
-        console.error('Validation errors:', messages);
-        return new BadRequestException(messages.join('; '));
+        const errorMessage = messages.join('; ');
+        console.error('[ValidationPipe] Validation errors:', errorMessage);
+        console.error('[ValidationPipe] Error details:', JSON.stringify(errors, null, 2));
+        return new BadRequestException(errorMessage);
       },
     }),
   );
