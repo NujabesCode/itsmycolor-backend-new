@@ -376,38 +376,36 @@ export class EmailService {
         console.log(`개발 모드 - 비밀번호 변경 토큰: ${user.email} -> ${token}`);
         console.log(`개발 모드 - 비밀번호 변경 링크: ${this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001')}/find-password?token=${token}`);
       }
-      // 에러를 다시 던져서 사용자에게 알림
-      throw error;
     }
 
     return { message: '비밀번호 변경 링크를 이메일로 발송했습니다.' };
   }
 
   private async sendPasswordResetLinkEmail(email: string, token: string): Promise<void> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
-    // 토큰을 그대로 사용 (hex 문자열이므로 URL-safe)
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
     const resetLink = `${frontendUrl}/find-password?token=${token}`;
     const emailTemplate = this.generatePasswordResetEmailTemplate(resetLink);
     const smtpFrom = this.configService.get<string>('SMTP_FROM', 'noreply@wepick.co.kr');
-    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
 
-    if (!this.transporter) {
-      // SMTP 설정이 없는 경우
-      console.error('[이메일 발송 실패] SMTP 설정이 없습니다.');
-      console.error('[이메일 발송 실패] 필요한 환경 변수: SMTP_HOST, SMTP_USER, SMTP_PASS');
+    if (this.transporter) {
+      // 실제 이메일 발송
+      const mailOptions = {
+        from: `"잇츠마이컬러" <${smtpFrom}>`,
+        to: email,
+        subject: '[잇츠마이컬러] 비밀번호 변경 링크',
+        html: emailTemplate,
+      } as nodemailer.SendMailOptions;
+
+      await this.transporter.sendMail(mailOptions);
+      console.log(`비밀번호 변경 링크 이메일 발송 완료: ${email}`);
+    } else {
+      // SMTP 설정이 없는 경우 콘솔 출력
       console.log(`=== 비밀번호 변경 링크 이메일 발송 시뮬레이션 ===`);
       console.log(`받는 사람: ${email}`);
       console.log(`제목: [잇츠마이컬러] 비밀번호 변경 링크`);
       console.log(`변경 링크: ${resetLink}`);
       console.log(`만료 시간: 1시간`);
       console.log(`============================================`);
-      
-      // 프로덕션 환경에서는 에러 발생
-      if (isProduction) {
-        console.error('[이메일 발송 실패] 프로덕션 환경에서 SMTP 설정이 없어 이메일을 발송할 수 없습니다.');
-        throw new BadRequestException('이메일 발송 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.');
-      }
-      return; // 개발 환경에서는 시뮬레이션만 하고 종료
     }
 
     // 실제 이메일 발송
@@ -423,7 +421,8 @@ export class EmailService {
       console.log(`비밀번호 변경 링크 이메일 발송 완료: ${email}`);
     } catch (error) {
       console.error('이메일 발송 중 오류 발생:', error);
-      throw new BadRequestException('이메일 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      // ddd 버전처럼 에러를 던지지 않고 로그만 출력
+      console.error('이메일 발송 실패 - 링크는 생성되었지만 이메일로 전송되지 않았습니다.');
     }
   }
 
