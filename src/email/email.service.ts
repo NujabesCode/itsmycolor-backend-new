@@ -299,47 +299,15 @@ export class EmailService {
   async sendPasswordResetEmail(dto: SendPasswordResetDto): Promise<{ message: string }> {
     const { email } = dto;
 
-    console.log(`[비밀번호 재설정 요청] 이메일: "${email}"`);
-    console.log(`[비밀번호 재설정 요청] 이메일 길이: ${email?.length || 0}`);
-    console.log(`[비밀번호 재설정 요청] 이메일 공백 제거 후: "${email?.trim() || ''}"`);
-
-    // 이메일 앞뒤 공백 제거 및 소문자 변환 (일관성 유지)
-    const normalizedEmail = email?.trim().toLowerCase();
-
-    // 사용자 존재 여부 확인 (정확한 매칭)
-    let user = await this.userRepository.findOne({
-      where: { email: normalizedEmail },
+    // 사용자 존재 여부 확인
+    const user = await this.userRepository.findOne({
+      where: { email },
     });
 
-    // 정확한 매칭이 안 되면 대소문자 무시 검색 시도
     if (!user) {
-      console.log(`[비밀번호 재설정 요청] 정확한 매칭 실패, 대소문자 무시 검색 시도`);
-      // TypeORM의 Like를 사용하여 대소문자 무시 검색
-      const users = await this.userRepository
-        .createQueryBuilder('user')
-        .where('LOWER(user.email) = LOWER(:email)', { email: normalizedEmail })
-        .getMany();
-      
-      if (users.length > 0) {
-        user = users[0];
-        console.log(`[비밀번호 재설정 요청] 대소문자 무시 검색으로 사용자 발견: ${user.email}`);
-      }
-    }
-
-    if (!user) {
-      console.error(`[비밀번호 재설정 요청] 사용자를 찾을 수 없음: "${normalizedEmail}"`);
-      // 디버깅을 위해 유사한 이메일 검색
-      const similarUsers = await this.userRepository
-        .createQueryBuilder('user')
-        .where('user.email LIKE :pattern', { pattern: `%${normalizedEmail.split('@')[0]}%` })
-        .limit(5)
-        .getMany();
-      console.log(`[비밀번호 재설정 요청] 유사한 이메일 검색 결과:`, similarUsers.map(u => u.email));
-      
       throw new BadRequestException('등록되지 않은 이메일입니다.');
     }
 
-    console.log(`[비밀번호 재설정 요청] 사용자 발견: ${user.email} (id: ${user.id})`);
     return this.generateAndSendResetLink(user);
   }
 
@@ -382,7 +350,7 @@ export class EmailService {
   }
 
   private async sendPasswordResetLinkEmail(email: string, token: string): Promise<void> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://itsmycolor-frontend.s3-website.ap-northeast-2.amazonaws.com');
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
     const resetLink = `${frontendUrl}/find-password?token=${token}`;
     const emailTemplate = this.generatePasswordResetEmailTemplate(resetLink);
     const smtpFrom = this.configService.get<string>('SMTP_FROM', 'noreply@wepick.co.kr');
@@ -406,23 +374,6 @@ export class EmailService {
       console.log(`변경 링크: ${resetLink}`);
       console.log(`만료 시간: 1시간`);
       console.log(`============================================`);
-    }
-
-    // 실제 이메일 발송
-    try {
-      const mailOptions = {
-        from: `"잇츠마이컬러" <${smtpFrom}>`,
-        to: email,
-        subject: '[잇츠마이컬러] 비밀번호 변경 링크',
-        html: emailTemplate,
-      } as nodemailer.SendMailOptions;
-
-      await this.transporter.sendMail(mailOptions);
-      console.log(`비밀번호 변경 링크 이메일 발송 완료: ${email}`);
-    } catch (error) {
-      console.error('이메일 발송 중 오류 발생:', error);
-      // ddd 버전처럼 에러를 던지지 않고 로그만 출력
-      console.error('이메일 발송 실패 - 링크는 생성되었지만 이메일로 전송되지 않았습니다.');
     }
   }
 
