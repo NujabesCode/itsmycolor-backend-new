@@ -352,7 +352,8 @@ export class EmailService {
 
   private async sendPasswordResetLinkEmail(email: string, token: string): Promise<void> {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
-    const resetLink = `${frontendUrl}/find-password?token=${token}`;
+    // S3 정적 호스팅을 위해 .html 확장자 추가
+    const resetLink = `${frontendUrl}/find-password.html?token=${token}`;
     const emailTemplate = this.generatePasswordResetEmailTemplate(resetLink);
     const smtpFrom = this.configService.get<string>('SMTP_FROM', 'noreply@wepick.co.kr');
 
