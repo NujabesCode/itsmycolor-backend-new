@@ -393,7 +393,8 @@ export class EmailService {
 
     if (!this.transporter) {
       // SMTP 설정이 없는 경우
-      console.error('SMTP 설정이 없어 이메일을 발송할 수 없습니다.');
+      console.error('[이메일 발송 실패] SMTP 설정이 없습니다.');
+      console.error('[이메일 발송 실패] 필요한 환경 변수: SMTP_HOST, SMTP_USER, SMTP_PASS');
       console.log(`=== 비밀번호 변경 링크 이메일 발송 시뮬레이션 ===`);
       console.log(`받는 사람: ${email}`);
       console.log(`제목: [잇츠마이컬러] 비밀번호 변경 링크`);
@@ -401,9 +402,10 @@ export class EmailService {
       console.log(`만료 시간: 1시간`);
       console.log(`============================================`);
       
-      // 프로덕션 환경에서는 에러 발생, 개발 환경에서는 허용
+      // 프로덕션 환경에서는 에러 발생
       if (isProduction) {
-        throw new BadRequestException('SMTP 설정이 없어 이메일을 발송할 수 없습니다. 관리자에게 문의해주세요.');
+        console.error('[이메일 발송 실패] 프로덕션 환경에서 SMTP 설정이 없어 이메일을 발송할 수 없습니다.');
+        throw new BadRequestException('이메일 발송 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.');
       }
       return; // 개발 환경에서는 시뮬레이션만 하고 종료
     }
