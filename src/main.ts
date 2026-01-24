@@ -1,6 +1,6 @@
-// Node.js 18+에서는 crypto가 이미 global에 있으므로 설정 불필요
-// import * as crypto from 'crypto';
-// (global as any).crypto = crypto;
+// Node.js 18+에서도 TypeORM이 crypto를 찾지 못하는 경우가 있어 명시적으로 설정
+import * as crypto from 'crypto';
+(global as any).crypto = crypto;
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
