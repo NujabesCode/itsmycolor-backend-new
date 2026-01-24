@@ -22,7 +22,8 @@ jobs:
           # 저장소 인증 설정
           git config --global credential.helper store
           echo "https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
-          git pull
+          git fetch origin main
+          git reset --hard origin/main || git pull origin main
           npm i --force
           npm run build
           pm2 restart itsmycolor-backend || pm2 start dist/main.js --name itsmycolor-backend 
