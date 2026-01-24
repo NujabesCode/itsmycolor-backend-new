@@ -385,9 +385,8 @@ export class EmailService {
 
   private async sendPasswordResetLinkEmail(email: string, token: string): Promise<void> {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001');
-    // 토큰을 URL 인코딩하여 특수문자 문제 방지
-    const encodedToken = encodeURIComponent(token);
-    const resetLink = `${frontendUrl}/find-password?token=${encodedToken}`;
+    // 토큰을 그대로 사용 (hex 문자열이므로 URL-safe)
+    const resetLink = `${frontendUrl}/find-password?token=${token}`;
     const emailTemplate = this.generatePasswordResetEmailTemplate(resetLink);
     const smtpFrom = this.configService.get<string>('SMTP_FROM', 'noreply@wepick.co.kr');
     const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
@@ -528,56 +527,79 @@ export class EmailService {
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const { token, newPassword } = dto;
 
-    console.log(`[비밀번호 재설정] 토큰으로 비밀번호 변경 시도`);
-    console.log(`[비밀번호 재설정] 토큰 길이: ${token?.length || 0}`);
-    console.log(`[비밀번호 재설정] 토큰 앞 20자: ${token?.substring(0, 20) || '없음'}`);
-    console.log(`[비밀번호 재설정] 토큰 뒤 20자: ${token?.length > 20 ? token.substring(token.length - 20) : token || '없음'}`);
-
-    // 토큰으로 검색 (isUsed 체크 전에 먼저 확인)
     // 토큰 앞뒤 공백 제거
     const trimmedToken = token?.trim();
-    console.log(`[비밀번호 재설정] 공백 제거 후 토큰 길이: ${trimmedToken?.length || 0}`);
-    
+
+    console.log('[비밀번호 재설정] 요청 받음:', {
+      tokenLength: trimmedToken?.length || 0,
+      tokenPrefix: trimmedToken?.substring(0, 20) || '없음',
+      tokenSuffix: trimmedToken?.length > 20 ? trimmedToken.substring(trimmedToken.length - 20) : trimmedToken || '없음',
+    });
+
+    // 토큰으로 검색
     const resetToken = await this.passwordResetTokenRepository.findOne({
-      where: { token: trimmedToken },
+      where: { token: trimmedToken, isUsed: false },
       relations: ['user'],
     });
 
     if (!resetToken) {
-      console.error(`[비밀번호 재설정] 토큰을 찾을 수 없음: ${token.substring(0, 10)}...`);
+      console.error('[비밀번호 재설정] 토큰을 찾을 수 없음');
+      
+      // 디버깅: 유사한 토큰 검색
+      if (trimmedToken && trimmedToken.length >= 10) {
+        const prefix = trimmedToken.substring(0, 10);
+        const similarTokens = await this.passwordResetTokenRepository
+          .createQueryBuilder('token')
+          .where('token.token LIKE :prefix', { prefix: `${prefix}%` })
+          .andWhere('token.isUsed = :isUsed', { isUsed: false })
+          .getMany();
+        
+        console.log('[비밀번호 재설정] 유사한 토큰 검색 결과:', {
+          count: similarTokens.length,
+          tokens: similarTokens.map(t => ({
+            id: t.id,
+            tokenPrefix: t.token.substring(0, 20),
+            tokenLength: t.token.length,
+            expiresAt: t.expiresAt,
+            isUsed: t.isUsed,
+          })),
+        });
+      }
+      
       throw new BadRequestException('유효하지 않은 토큰입니다.');
     }
 
-    console.log(`[비밀번호 재설정] 토큰 발견: id=${resetToken.id}, isUsed=${resetToken.isUsed}, expiresAt=${resetToken.expiresAt}, now=${new Date()}`);
-
-    // 이미 사용된 토큰인지 확인
-    if (resetToken.isUsed) {
-      console.error(`[비밀번호 재설정] 이미 사용된 토큰: ${resetToken.id}`);
-      throw new BadRequestException('이미 사용된 링크입니다. 새로운 비밀번호 재설정 링크를 요청해주세요.');
-    }
+    console.log('[비밀번호 재설정] 토큰 발견:', {
+      tokenId: resetToken.id,
+      userId: resetToken.userId,
+      expiresAt: resetToken.expiresAt,
+      isUsed: resetToken.isUsed,
+      now: new Date(),
+    });
 
     // 만료 시간 확인
     const now = new Date();
     if (now > resetToken.expiresAt) {
-      console.error(`[비밀번호 재설정] 토큰 만료: expiresAt=${resetToken.expiresAt}, now=${now}`);
+      console.error('[비밀번호 재설정] 토큰 만료:', {
+        expiresAt: resetToken.expiresAt,
+        now: now,
+        diff: now.getTime() - resetToken.expiresAt.getTime(),
+      });
       await this.passwordResetTokenRepository.delete({ id: resetToken.id });
-      throw new BadRequestException('토큰이 만료되었습니다. 새로운 비밀번호 재설정 링크를 요청해주세요.');
+      throw new BadRequestException('토큰이 만료되었습니다.');
     }
 
     // 새 비밀번호 해시화 및 저장
-    try {
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await this.userRepository.update(resetToken.userId, { password: hashedPassword });
-      console.log(`[비밀번호 재설정] 비밀번호 변경 성공: userId=${resetToken.userId}`);
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.update(resetToken.userId, { password: hashedPassword });
 
-      // 토큰 사용 처리
-      resetToken.isUsed = true;
-      await this.passwordResetTokenRepository.save(resetToken);
-      console.log(`[비밀번호 재설정] 토큰 사용 처리 완료: tokenId=${resetToken.id}`);
-    } catch (error) {
-      console.error(`[비밀번호 재설정] 비밀번호 변경 실패:`, error);
-      throw new BadRequestException('비밀번호 변경 중 오류가 발생했습니다.');
-    }
+    // 토큰 사용 처리
+    resetToken.isUsed = true;
+    await this.passwordResetTokenRepository.save(resetToken);
+
+    console.log('[비밀번호 재설정] 비밀번호 변경 성공:', {
+      userId: resetToken.userId,
+    });
 
     return {
       message: '비밀번호가 성공적으로 변경되었습니다.',
