@@ -18,11 +18,11 @@ jobs:
         port: ${{ secrets.EC2_PORT }}
         script: |
           cd itsmycolor-backend
-          git remote set-url origin https://github.com/BOLTLAB-DEV/itsmycolor-backend.git
+          git remote set-url origin https://github.com/NujabesCode/itsmycolor-backend-new.git
           # 저장소 인증 설정
           git config --global credential.helper store
           echo "https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
-          git pull
+          git pull origin main
           npm i --force
           npm run build
           pm2 restart itsmycolor-backend || pm2 start dist/main.js --name itsmycolor-backend 
