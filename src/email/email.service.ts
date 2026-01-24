@@ -528,64 +528,17 @@ export class EmailService {
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const { token, newPassword } = dto;
 
-    // 토큰 앞뒤 공백 제거
-    const trimmedToken = token?.trim();
-
-    console.log('[비밀번호 재설정] 요청 받음:', {
-      tokenLength: trimmedToken?.length || 0,
-      tokenPrefix: trimmedToken?.substring(0, 20) || '없음',
-      tokenSuffix: trimmedToken?.length > 20 ? trimmedToken.substring(trimmedToken.length - 20) : trimmedToken || '없음',
-    });
-
-    // 토큰으로 검색
     const resetToken = await this.passwordResetTokenRepository.findOne({
-      where: { token: trimmedToken, isUsed: false },
+      where: { token, isUsed: false },
       relations: ['user'],
     });
 
     if (!resetToken) {
-      console.error('[비밀번호 재설정] 토큰을 찾을 수 없음');
-      
-      // 디버깅: 유사한 토큰 검색
-      if (trimmedToken && trimmedToken.length >= 10) {
-        const prefix = trimmedToken.substring(0, 10);
-        const similarTokens = await this.passwordResetTokenRepository
-          .createQueryBuilder('token')
-          .where('token.token LIKE :prefix', { prefix: `${prefix}%` })
-          .andWhere('token.isUsed = :isUsed', { isUsed: false })
-          .getMany();
-        
-        console.log('[비밀번호 재설정] 유사한 토큰 검색 결과:', {
-          count: similarTokens.length,
-          tokens: similarTokens.map(t => ({
-            id: t.id,
-            tokenPrefix: t.token.substring(0, 20),
-            tokenLength: t.token.length,
-            expiresAt: t.expiresAt,
-            isUsed: t.isUsed,
-          })),
-        });
-      }
-      
       throw new BadRequestException('유효하지 않은 토큰입니다.');
     }
 
-    console.log('[비밀번호 재설정] 토큰 발견:', {
-      tokenId: resetToken.id,
-      userId: resetToken.userId,
-      expiresAt: resetToken.expiresAt,
-      isUsed: resetToken.isUsed,
-      now: new Date(),
-    });
-
     // 만료 시간 확인
-    const now = new Date();
-    if (now > resetToken.expiresAt) {
-      console.error('[비밀번호 재설정] 토큰 만료:', {
-        expiresAt: resetToken.expiresAt,
-        now: now,
-        diff: now.getTime() - resetToken.expiresAt.getTime(),
-      });
+    if (new Date() > resetToken.expiresAt) {
       await this.passwordResetTokenRepository.delete({ id: resetToken.id });
       throw new BadRequestException('토큰이 만료되었습니다.');
     }
@@ -597,10 +550,6 @@ export class EmailService {
     // 토큰 사용 처리
     resetToken.isUsed = true;
     await this.passwordResetTokenRepository.save(resetToken);
-
-    console.log('[비밀번호 재설정] 비밀번호 변경 성공:', {
-      userId: resetToken.userId,
-    });
 
     return {
       message: '비밀번호가 성공적으로 변경되었습니다.',
