@@ -23,7 +23,13 @@ jobs:
           git config --global credential.helper store
           echo "https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
           git pull origin main
-          npm i --force
+          # 변경된 파일만 확인하여 필요한 경우에만 npm install
+          if git diff HEAD~1 HEAD --name-only | grep -qE "(package\.json|package-lock\.json)"; then
+            echo "의존성 변경 감지 - npm install 실행"
+            npm i --force
+          else
+            echo "의존성 변경 없음 - npm install 건너뜀"
+          fi
           npm run build
           
           # .env 파일이 없으면 생성
