@@ -17,24 +17,11 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT }}
         script: |
-          echo "=== 배포 시작 ==="
-          pwd
-          ls -la
-          echo "=== itsmycolor-backend 디렉토리로 이동 ==="
           cd itsmycolor-backend
-          pwd
-          echo "=== Git 원격 저장소 설정 ==="
           git remote set-url origin https://github.com/NujabesCode/itsmycolor-backend-new.git
-          git remote -v
-          echo "=== Git 인증 설정 ==="
           git config --global credential.helper store
           echo "https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
-          echo "=== Git Pull ==="
           git pull
-          echo "=== npm install ==="
           npm i --force
-          echo "=== npm build ==="
           npm run build
-          echo "=== PM2 재시작 ==="
           pm2 restart itsmycolor-backend || pm2 start dist/main.js --name itsmycolor-backend
-          echo "=== 배포 완료 ==="
