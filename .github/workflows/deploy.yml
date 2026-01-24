@@ -25,4 +25,17 @@ jobs:
           git pull origin main
           npm i --force
           npm run build
+          
+          # .env 파일에 SMTP 설정이 없으면 추가 (기본값)
+          if ! grep -q "SMTP_HOST" .env 2>/dev/null; then
+            echo "" >> .env
+            echo "# SMTP 이메일 설정 (비밀번호 찾기 등에 필요)" >> .env
+            echo "SMTP_HOST=smtp.gmail.com" >> .env
+            echo "SMTP_PORT=587" >> .env
+            echo "SMTP_USER=your-email@gmail.com" >> .env
+            echo "SMTP_PASS=your-app-password" >> .env
+            echo "SMTP_FROM=noreply@wepick.co.kr" >> .env
+            echo "SMTP 설정이 .env 파일에 추가되었습니다. 실제 값으로 변경이 필요합니다."
+          fi
+          
           pm2 restart itsmycolor-backend || pm2 start dist/main.js --name itsmycolor-backend 
