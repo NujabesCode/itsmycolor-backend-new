@@ -338,11 +338,12 @@ export class EmailService {
     try {
       await this.sendPasswordResetLinkEmail(user.email, token);
     } catch (error) {
-      console.error('비밀번호 변경 링크 이메일 발송 실패:', error);
+      console.error('[비밀번호 재설정] 이메일 발송 실패:', error);
+      // 에러를 다시 던지지 않고 계속 진행 (ddd 버전처럼)
       // 개발 환경에서는 콘솔에 토큰 출력
       if (process.env.NODE_ENV !== 'production') {
         console.log(`개발 모드 - 비밀번호 변경 토큰: ${user.email} -> ${token}`);
-        console.log(`개발 모드 - 비밀번호 변경 링크: ${this.configService.get<string>('FRONTEND_URL', 'http://localhost:3001')}/find-password?token=${token}`);
+        console.log(`개발 모드 - 비밀번호 변경 링크: ${this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000')}/find-password?token=${token}`);
       }
     }
 
@@ -355,17 +356,26 @@ export class EmailService {
     const emailTemplate = this.generatePasswordResetEmailTemplate(resetLink);
     const smtpFrom = this.configService.get<string>('SMTP_FROM', 'noreply@wepick.co.kr');
 
-    if (this.transporter) {
-      // 실제 이메일 발송
-      const mailOptions = {
-        from: `"잇츠마이컬러" <${smtpFrom}>`,
-        to: email,
-        subject: '[잇츠마이컬러] 비밀번호 변경 링크',
-        html: emailTemplate,
-      } as nodemailer.SendMailOptions;
+    console.log(`[비밀번호 재설정] 이메일 발송 시도: ${email}`);
+    console.log(`[비밀번호 재설정] transporter 존재 여부: ${!!this.transporter}`);
+    console.log(`[비밀번호 재설정] 링크: ${resetLink}`);
 
-      await this.transporter.sendMail(mailOptions);
-      console.log(`비밀번호 변경 링크 이메일 발송 완료: ${email}`);
+    if (this.transporter) {
+      try {
+        // 실제 이메일 발송
+        const mailOptions = {
+          from: `"잇츠마이컬러" <${smtpFrom}>`,
+          to: email,
+          subject: '[잇츠마이컬러] 비밀번호 변경 링크',
+          html: emailTemplate,
+        } as nodemailer.SendMailOptions;
+
+        await this.transporter.sendMail(mailOptions);
+        console.log(`[비밀번호 재설정] 이메일 발송 완료: ${email}`);
+      } catch (error) {
+        console.error(`[비밀번호 재설정] 이메일 발송 실패: ${email}`, error);
+        throw error;
+      }
     } else {
       // SMTP 설정이 없는 경우 콘솔 출력
       console.log(`=== 비밀번호 변경 링크 이메일 발송 시뮬레이션 ===`);
