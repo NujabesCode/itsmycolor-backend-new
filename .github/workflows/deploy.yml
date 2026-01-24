@@ -17,14 +17,12 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT }}
         script: |
-          cd itsmycolor-backend || cd ~/itsmycolor-backend || (mkdir -p ~/itsmycolor-backend && cd ~/itsmycolor-backend && git clone https://github.com/NujabesCode/itsmycolor-backend-new.git .)
+          cd itsmycolor-backend
           git remote set-url origin https://github.com/NujabesCode/itsmycolor-backend-new.git
           # 저장소 인증 설정
           git config --global credential.helper store
           echo "https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
-          git fetch origin main
-          git reset --hard origin/main
-          # npm install 실행 (의존성 확인은 나중에)
+          git pull origin main
           npm i --force
           npm run build
           
