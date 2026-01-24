@@ -17,32 +17,12 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT }}
         script: |
+          set -e
           cd itsmycolor-backend
           git remote set-url origin https://github.com/NujabesCode/itsmycolor-backend-new.git
-          # 저장소 인증 설정
           git config --global credential.helper store
           echo "https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
-          git pull origin main
+          git pull origin main || git fetch origin main && git reset --hard origin/main
           npm i --force
           npm run build
-          
-          # .env 파일 설정 (에러 무시하고 계속 진행)
-          set +e
-          if [ ! -f .env ]; then
-            touch .env
-          fi
-          if ! grep -q "FRONTEND_URL" .env 2>/dev/null; then
-            echo "" >> .env
-            echo "FRONTEND_URL=http://itsmycolor-frontend.s3-website.ap-northeast-2.amazonaws.com" >> .env
-          fi
-          if ! grep -q "SMTP_HOST" .env 2>/dev/null; then
-            echo "" >> .env
-            echo "SMTP_HOST=smtp.gmail.com" >> .env
-            echo "SMTP_PORT=587" >> .env
-            echo "SMTP_USER=your-email@gmail.com" >> .env
-            echo "SMTP_PASS=your-app-password" >> .env
-            echo "SMTP_FROM=noreply@wepick.co.kr" >> .env
-          fi
-          set -e
-          
           pm2 restart itsmycolor-backend || pm2 start dist/main.js --name itsmycolor-backend 
