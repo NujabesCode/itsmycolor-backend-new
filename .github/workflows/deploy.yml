@@ -17,19 +17,15 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         port: ${{ secrets.EC2_PORT }}
         script: |
-          cd itsmycolor-backend
+          cd itsmycolor-backend || cd ~/itsmycolor-backend || (mkdir -p ~/itsmycolor-backend && cd ~/itsmycolor-backend && git clone https://github.com/NujabesCode/itsmycolor-backend-new.git .)
           git remote set-url origin https://github.com/NujabesCode/itsmycolor-backend-new.git
           # 저장소 인증 설정
           git config --global credential.helper store
           echo "https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
-          git pull origin main
-          # 변경된 파일만 확인하여 필요한 경우에만 npm install
-          if git diff HEAD~1 HEAD --name-only | grep -qE "(package\.json|package-lock\.json)"; then
-            echo "의존성 변경 감지 - npm install 실행"
-            npm i --force
-          else
-            echo "의존성 변경 없음 - npm install 건너뜀"
-          fi
+          git fetch origin main
+          git reset --hard origin/main
+          # npm install 실행 (의존성 확인은 나중에)
+          npm i --force
           npm run build
           
           # .env 파일이 없으면 생성
