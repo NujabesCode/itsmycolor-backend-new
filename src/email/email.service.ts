@@ -382,7 +382,7 @@ export class EmailService {
   }
 
   private async sendPasswordResetLinkEmail(email: string, token: string): Promise<void> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://itsmycolor-frontend.s3-website.ap-northeast-2.amazonaws.com');
     const resetLink = `${frontendUrl}/find-password?token=${token}`;
     const emailTemplate = this.generatePasswordResetEmailTemplate(resetLink);
     const smtpFrom = this.configService.get<string>('SMTP_FROM', 'noreply@wepick.co.kr');
