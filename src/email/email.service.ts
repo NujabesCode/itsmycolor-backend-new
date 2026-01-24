@@ -489,20 +489,38 @@ export class EmailService {
   async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
     const { token, newPassword } = dto;
 
+    console.log(`[비밀번호 재설정] API 호출됨`);
+    console.log(`[비밀번호 재설정] 토큰 길이: ${token?.length || 0}`);
+    console.log(`[비밀번호 재설정] 토큰 앞 20자: ${token?.substring(0, 20) || '없음'}`);
+
     const resetToken = await this.passwordResetTokenRepository.findOne({
       where: { token, isUsed: false },
       relations: ['user'],
     });
 
+    console.log(`[비밀번호 재설정] DB에서 토큰 찾기 결과: ${resetToken ? '찾음' : '못 찾음'}`);
+
     if (!resetToken) {
+      // 유사한 토큰 찾기 (디버깅용)
+      const allTokens = await this.passwordResetTokenRepository.find({
+        where: { isUsed: false },
+        take: 5,
+      });
+      console.log(`[비밀번호 재설정] 사용 가능한 토큰 개수: ${allTokens.length}`);
+      if (allTokens.length > 0) {
+        console.log(`[비밀번호 재설정] 첫 번째 토큰 앞 20자: ${allTokens[0].token.substring(0, 20)}`);
+      }
       throw new BadRequestException('유효하지 않은 토큰입니다.');
     }
 
     // 만료 시간 확인
     if (new Date() > resetToken.expiresAt) {
+      console.log(`[비밀번호 재설정] 토큰 만료됨`);
       await this.passwordResetTokenRepository.delete({ id: resetToken.id });
       throw new BadRequestException('토큰이 만료되었습니다.');
     }
+
+    console.log(`[비밀번호 재설정] 토큰 유효함, 비밀번호 변경 진행`);
 
     // 새 비밀번호 해시화 및 저장
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -511,6 +529,8 @@ export class EmailService {
     // 토큰 사용 처리
     resetToken.isUsed = true;
     await this.passwordResetTokenRepository.save(resetToken);
+
+    console.log(`[비밀번호 재설정] 비밀번호 변경 완료`);
 
     return {
       message: '비밀번호가 성공적으로 변경되었습니다.',
