@@ -49,6 +49,8 @@ export class EmailController {
   @Post('reset-password')
   @ApiDoc({ summary: '비밀번호 재설정', description: '토큰을 사용하여 비밀번호를 재설정합니다.' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
+    console.log(`[EmailController] reset-password API 호출됨`);
+    console.log(`[EmailController] 받은 데이터:`, { tokenLength: dto.token?.length, hasPassword: !!dto.newPassword });
     return this.emailService.resetPassword(dto);
   }
 
