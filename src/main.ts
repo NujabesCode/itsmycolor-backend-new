@@ -1,6 +1,5 @@
-// Node.js 18+에서도 TypeORM이 crypto를 찾지 못하는 경우가 있어 명시적으로 설정
-import * as crypto from 'crypto';
-(global as any).crypto = crypto;
+// Node.js 18+에서는 crypto가 내장되어 있으므로 별도 설정 불필요
+// Node.js 20+에서는 global.crypto가 읽기 전용이므로 설정하지 않음
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -64,7 +63,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
 
-  await app.listen(process.env.PORT ?? 3000);
-  console.log(`Application is running on: ${await app.getUrl()}`);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Application is running on: http://0.0.0.0:${port}`);
+  console.log(`Application is accessible at: http://13.125.130.10:${port}`);
 }
 bootstrap();
