@@ -1,0 +1,9 @@
+﻿cd ~/itsmycolor-backend
+git pull origin main
+npm i --force
+npm run build
+pm2 restart itsmycolor-backend || pm2 start dist/main.js --name itsmycolor-backend
+pm2 save
+pm2 status
+sleep 3
+curl -s http://localhost:3000 | head -5
