@@ -7,6 +7,8 @@
   Get,
   UseGuards,
   Req,
+  Query,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -64,15 +66,18 @@ export class AuthController {
     return await this.authService.socialLogin(user);
   }
 
-  // Naver OAuth
+  // Naver OAuth - code를 받아서 처리하는 엔드포인트
   @Get('naver')
-  @UseGuards(NaverAuthGuard)
   @ApiDoc({
     summary: 'Naver OAuth 로그인',
-    description: 'Naver OAuth를 통한 로그인을 시작합니다.',
+    description: '네이버 OAuth code를 받아서 로그인을 처리합니다.',
   })
-  async naverAuth(@GetUser() user: User) {
-    return await this.authService.socialLogin(user);
+  async naverAuth(@Query('code') code: string) {
+    if (!code) {
+      throw new UnauthorizedException('네이버 인증 코드가 필요합니다.');
+    }
+    
+    return await this.authService.naverLoginByCode(code);
   }
 
   // Kakao OAuth

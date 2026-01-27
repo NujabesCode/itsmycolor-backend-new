@@ -1,5 +1,6 @@
 ﻿import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -10,6 +11,7 @@ import { BrandStatus } from '../brands/entities/brand.entity';
 import { CouponsService } from '../coupons/coupons.service';
 import { CouponType } from '../coupons/entities/coupon.entity';
 import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 
 // ADM-010: IP 기반 실패 차단을 위한 메모리 저장소 (실제 운영에서는 Redis 사용 권장)
 interface IpFailureRecord {
@@ -27,6 +29,7 @@ export class AuthService {
     private brandsService: BrandsService,
     private jwtService: JwtService,
     private couponsService: CouponsService,
+    private configService: ConfigService,
   ) {
     // 10분마다 오래된 IP 기록 정리
     setInterval(() => {
@@ -193,5 +196,85 @@ export class AuthService {
         name: user.name,
       },
     };
+  }
+
+  async naverLoginByCode(code: string) {
+    const clientId = this.configService.get<string>('NAVER_CLIENT_ID');
+    const clientSecret = this.configService.get<string>('NAVER_CLIENT_SECRET');
+    const redirectUri = this.configService.get<string>('NAVER_CALLBACK_URL');
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      throw new UnauthorizedException('네이버 OAuth 설정이 올바르지 않습니다.');
+    }
+
+    try {
+      // 네이버에서 access_token 받기
+      const tokenResponse = await axios.post(
+        'https://nid.naver.com/oauth2.0/token',
+        null,
+        {
+          params: {
+            grant_type: 'authorization_code',
+            client_id: clientId,
+            client_secret: clientSecret,
+            code: code,
+            redirect_uri: redirectUri,
+          },
+        }
+      );
+
+      const { access_token } = tokenResponse.data;
+
+      if (!access_token) {
+        throw new UnauthorizedException('네이버 액세스 토큰을 받을 수 없습니다.');
+      }
+
+      // 네이버에서 사용자 정보 가져오기
+      const userInfoResponse = await axios.get('https://openapi.naver.com/v1/nid/me', {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      });
+
+      const naverUser = userInfoResponse.data.response;
+      const email = naverUser?.email;
+
+      if (!email) {
+        throw new UnauthorizedException('네이버 이메일 정보를 가져올 수 없습니다.');
+      }
+
+      // 사용자 찾기 또는 생성
+      const user = await this.usersService.findOrCreate(email);
+
+      // 로그인 처리
+      const tokenId = uuidv4();
+      await this.usersService.updateLastTokenId(user.id, tokenId);
+
+      const payload = {
+        email: user.email,
+        sub: user.id,
+        jti: tokenId,
+      };
+
+      const brand = await this.brandsService.findByUserIdWithoutPagination(user.id);
+      const hasBrand = brand !== null;
+      const isRegistered = user.name !== null && user.phone !== null;
+
+      return {
+        hasBrand,
+        isRegistered,
+        accessToken: this.jwtService.sign(payload),
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        },
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('네이버 로그인에 실패했습니다.');
+    }
   }
 }
