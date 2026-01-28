@@ -138,22 +138,37 @@ export class AdminService {
             
             console.log(`[getCustomers] purchaseInfo [ID: ${user.id}]:`, purchaseInfo);
             
-            // VIP 여부 확인 (50만원 이상 구매)
-            const isVip = purchaseInfo && purchaseInfo.totalAmount >= 500000;
+            // purchaseInfo가 null이면 기본값으로 설정 (명시적으로 객체 생성)
+            const finalPurchaseInfo = purchaseInfo ? {
+              totalAmount: purchaseInfo.totalAmount || 0,
+              lastPurchaseDate: purchaseInfo.lastPurchaseDate || null
+            } : {
+              totalAmount: 0,
+              lastPurchaseDate: null
+            };
             
-            return {
+            console.log(`[getCustomers] finalPurchaseInfo [ID: ${user.id}]:`, finalPurchaseInfo);
+            
+            // VIP 여부 확인 (50만원 이상 구매)
+            const isVip = finalPurchaseInfo.totalAmount >= 500000;
+            
+            const result = {
               id: user.id,
               name: user.name,
               email: user.email,
               phone: user.phone,
               isVip,
-              bodyType: latestColorAnalysis?.bodyType,
-              colorSeason: latestColorAnalysis?.colorSeason,
-              lastVisitDate: latestColorAnalysis?.createdAt || purchaseInfo?.lastPurchaseDate,
-              purchaseInfo,
+              bodyType: latestColorAnalysis?.bodyType || null,
+              colorSeason: latestColorAnalysis?.colorSeason || null,
+              lastVisitDate: latestColorAnalysis?.createdAt || finalPurchaseInfo.lastPurchaseDate || null,
+              purchaseInfo: finalPurchaseInfo,
               createdAt: user.createdAt,
               updatedAt: user.updatedAt
-            } as CustomerResponseDto;
+            };
+            
+            console.log(`[getCustomers] 최종 반환 데이터 [ID: ${user.id}]:`, JSON.stringify(result, null, 2));
+            
+            return result as CustomerResponseDto;
           } catch (error) {
             console.error(`사용자 데이터 처리 중 오류 발생 [ID: ${user.id}]:`, error.message);
             // 오류 발생 시 최소한의 정보만 반환
@@ -163,6 +178,10 @@ export class AdminService {
               email: user.email || '',
               phone: user.phone || '',
               isVip: false,
+              purchaseInfo: {
+                totalAmount: 0,
+                lastPurchaseDate: null
+              },
               createdAt: user.createdAt,
               updatedAt: user.updatedAt
             } as CustomerResponseDto;

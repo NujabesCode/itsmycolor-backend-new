@@ -82,7 +82,12 @@ export class ProductResponseDto {
     this.originalPriceKr = product.originalPriceKr ?? undefined;
     this.originalPriceUsd = product.originalPriceUsd ?? undefined;
     this.stockQuantity = product.stockQuantity;
-    this.imageUrl = product.imageUrl || null;
+    // localhost로 시작하는 이미지 URL은 프로덕션에서 사용할 수 없으므로 null로 변환
+    if (product.imageUrl && (product.imageUrl.startsWith('http://localhost') || product.imageUrl.startsWith('https://localhost'))) {
+      this.imageUrl = null;
+    } else {
+      this.imageUrl = product.imageUrl || null;
+    }
     this.recommendedColorSeason = product.recommendedColorSeason;
     this.recommendedBodyType = product.recommendedBodyType;
     this.recommendedGender = product.recommendedGender;

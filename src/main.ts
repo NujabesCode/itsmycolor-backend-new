@@ -1,5 +1,8 @@
-// Node.js 18+에서는 crypto가 내장되어 있으므로 별도 설정 불필요
-// Node.js 20+에서는 global.crypto가 읽기 전용이므로 설정하지 않음
+// Node.js 18+에서 crypto 모듈 import
+import * as crypto from 'crypto';
+if (typeof globalThis.crypto === 'undefined') {
+  (globalThis as any).crypto = crypto.webcrypto || crypto;
+}
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -66,6 +69,6 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   await app.listen(port, '0.0.0.0');
   console.log(`Application is running on: http://0.0.0.0:${port}`);
-  console.log(`Application is accessible at: http://13.125.130.10:${port}`);
+  console.log(`Application is accessible at: http://43.201.54.58:${port}`);
 }
 bootstrap();

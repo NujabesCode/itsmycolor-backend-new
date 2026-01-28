@@ -134,8 +134,23 @@ export class ProductDetailResponseDto {
     this.originalPriceKr = product.originalPriceKr ?? undefined;
     this.originalPriceUsd = product.originalPriceUsd ?? undefined;
     this.description = product.description;
-    this.imageUrl = product.imageUrl;
-    this.additionalImageUrls = product.additionalImageUrls;
+    // localhost로 시작하는 이미지 URL은 프로덕션에서 사용할 수 없으므로 null로 변환
+    if (product.imageUrl && (product.imageUrl.startsWith('http://localhost') || product.imageUrl.startsWith('https://localhost'))) {
+      this.imageUrl = undefined;
+    } else {
+      this.imageUrl = product.imageUrl;
+    }
+    // additionalImageUrls도 필터링
+    if (product.additionalImageUrls && product.additionalImageUrls.length > 0) {
+      this.additionalImageUrls = product.additionalImageUrls.filter(url => 
+        !url.startsWith('http://localhost') && !url.startsWith('https://localhost')
+      );
+      if (this.additionalImageUrls.length === 0) {
+        this.additionalImageUrls = undefined;
+      }
+    } else {
+      this.additionalImageUrls = product.additionalImageUrls;
+    }
     this.recommendedColorSeason = product.recommendedColorSeason;
     this.recommendedBodyType = product.recommendedBodyType;
     this.recommendedGender = product.recommendedGender;

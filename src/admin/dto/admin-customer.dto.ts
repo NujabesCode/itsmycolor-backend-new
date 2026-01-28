@@ -87,8 +87,8 @@ export class CustomerPurchaseInfoDto {
   @ApiProperty({ description: '누적 구매액' })
   totalAmount: number;
 
-  @ApiProperty({ description: '최근 구매일' })
-  lastPurchaseDate: Date;
+  @ApiProperty({ description: '최근 구매일', required: false })
+  lastPurchaseDate?: Date | null;
 }
 
 export class CustomerResponseDto {
