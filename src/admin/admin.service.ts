@@ -43,25 +43,11 @@ export class AdminService {
     const skip = (page - 1) * limit;
     
     try {
+      // select를 제거하여 leftJoinAndSelect가 제대로 동작하도록 함
       const queryBuilder = this.userRepository
         .createQueryBuilder('user')
         .leftJoinAndSelect('user.colorAnalyses', 'colorAnalysis')
-        .leftJoinAndSelect('user.orders', 'order')
-        .select([
-          'user.id',
-          'user.name',
-          'user.email',
-          'user.phone',
-          'user.createdAt',
-          'user.updatedAt',
-          'colorAnalysis.id',
-          'colorAnalysis.bodyType',
-          'colorAnalysis.colorSeason',
-          'colorAnalysis.createdAt',
-          'order.id',
-          'order.totalAmount',
-          'order.createdAt'
-        ]);
+        .leftJoinAndSelect('user.orders', 'order');
       
       // 고객 타입 필터링
       try {
@@ -117,13 +103,40 @@ export class AdminService {
       const customersResponse = await Promise.all(
         users.map(async user => {
           try {
-            const latestColorAnalysis = user.colorAnalyses && user.colorAnalyses.length > 0
-              ? user.colorAnalyses.sort((a, b) => 
+            // 디버깅: colorAnalyses 확인
+            console.log(`[getCustomers] 사용자 [ID: ${user.id}] colorAnalyses:`, {
+              hasColorAnalyses: !!user.colorAnalyses,
+              colorAnalysesLength: user.colorAnalyses?.length || 0,
+              colorAnalyses: user.colorAnalyses
+            });
+            
+            // colorAnalyses가 없으면 다시 조회 시도
+            let colorAnalyses = user.colorAnalyses;
+            if (!colorAnalyses || colorAnalyses.length === 0) {
+              const userWithAnalyses = await this.userRepository.findOne({
+                where: { id: user.id },
+                relations: ['colorAnalyses']
+              });
+              colorAnalyses = userWithAnalyses?.colorAnalyses || [];
+              console.log(`[getCustomers] 재조회한 colorAnalyses [ID: ${user.id}]:`, colorAnalyses.length);
+            }
+            
+            const latestColorAnalysis = colorAnalyses && colorAnalyses.length > 0
+              ? colorAnalyses.sort((a, b) => 
                   b.createdAt.getTime() - a.createdAt.getTime())[0]
               : null;
             
+            console.log(`[getCustomers] latestColorAnalysis [ID: ${user.id}]:`, {
+              hasAnalysis: !!latestColorAnalysis,
+              bodyType: latestColorAnalysis?.bodyType,
+              colorSeason: latestColorAnalysis?.colorSeason,
+              createdAt: latestColorAnalysis?.createdAt
+            });
+            
             // 구매 정보 계산
             const purchaseInfo = await this.getUserPurchaseInfo(user.id);
+            
+            console.log(`[getCustomers] purchaseInfo [ID: ${user.id}]:`, purchaseInfo);
             
             // VIP 여부 확인 (50만원 이상 구매)
             const isVip = purchaseInfo && purchaseInfo.totalAmount >= 500000;
