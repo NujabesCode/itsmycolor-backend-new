@@ -463,8 +463,23 @@ export class AdminService {
         bodyTypeSales = [];
       }
       
+      // 총 주문 건수
+      let totalOrders = 0;
+      try {
+        totalOrders = await this.orderRepository.count({
+          where: {
+            totalAmount: Not(0) // totalAmount가 0이 아닌 주문만 카운트
+          }
+        });
+        console.log(`[getDashboardData] 총 주문 건수: ${totalOrders}`);
+      } catch (error) {
+        console.error('총 주문 건수 조회 중 오류 발생:', error.message);
+        totalOrders = 0;
+      }
+      
       return {
         customerStatistics,
+        totalOrders,
         monthlySales,
         bodyTypeAnalysis,
         topProducts,
@@ -483,6 +498,7 @@ export class AdminService {
           purchaseCustomers: 0,
           vipCustomers: 0
         },
+        totalOrders: 0,
         monthlySales: [],
         bodyTypeAnalysis: [],
         topProducts: [],
