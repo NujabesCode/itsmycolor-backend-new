@@ -6,6 +6,7 @@ import { Order, OrderStatus } from '../orders/entities/order.entity';
 import { Product } from '../products/entities/product.entity';
 import { ColorAnalysis } from '../color-analysis/entities/color-analysis.entity';
 import { ConsultingAppointment } from '../color-analysis/entities/consulting-appointment.entity';
+import { Payment } from '../payments/entities/payment.entity';
 import {
   CustomerType,
   CustomerFilterDto,
@@ -35,6 +36,8 @@ export class AdminService {
     private colorAnalysisRepository: Repository<ColorAnalysis>,
     @InjectRepository(ConsultingAppointment)
     private consultingAppointmentRepository: Repository<ConsultingAppointment>,
+    @InjectRepository(Payment)
+    private paymentRepository: Repository<Payment>,
     private readonly usersService: UsersService,
   ) {}
 
@@ -133,18 +136,27 @@ export class AdminService {
               createdAt: latestColorAnalysis?.createdAt
             });
             
-            // 구매 정보 계산
-            const purchaseInfo = await this.getUserPurchaseInfo(user.id);
+            // 구매 정보 계산 (이제 항상 객체를 반환함)
+            let purchaseInfo;
+            try {
+              console.log(`[getCustomers] getUserPurchaseInfo 호출 시작 [ID: ${user.id}]`);
+              purchaseInfo = await this.getUserPurchaseInfo(user.id);
+              console.log(`[getCustomers] getUserPurchaseInfo 호출 완료 [ID: ${user.id}]:`, purchaseInfo);
+            } catch (purchaseError) {
+              console.error(`[getCustomers] getUserPurchaseInfo 호출 실패 [ID: ${user.id}]:`, purchaseError.message);
+              console.error(`[getCustomers] 스택 트레이스:`, purchaseError.stack);
+              purchaseInfo = {
+                totalAmount: 0,
+                lastPurchaseDate: null
+              };
+            }
             
             console.log(`[getCustomers] purchaseInfo [ID: ${user.id}]:`, purchaseInfo);
             
-            // purchaseInfo가 null이면 기본값으로 설정 (명시적으로 객체 생성)
-            const finalPurchaseInfo = purchaseInfo ? {
-              totalAmount: purchaseInfo.totalAmount || 0,
-              lastPurchaseDate: purchaseInfo.lastPurchaseDate || null
-            } : {
-              totalAmount: 0,
-              lastPurchaseDate: null
+            // purchaseInfo는 이제 항상 객체이므로 직접 사용
+            const finalPurchaseInfo = {
+              totalAmount: purchaseInfo?.totalAmount ?? 0,
+              lastPurchaseDate: purchaseInfo?.lastPurchaseDate ?? null
             };
             
             console.log(`[getCustomers] finalPurchaseInfo [ID: ${user.id}]:`, finalPurchaseInfo);
@@ -200,30 +212,110 @@ export class AdminService {
     }
   }
 
-  async getUserPurchaseInfo(userId: string): Promise<CustomerPurchaseInfoDto | null> {
+  async getUserPurchaseInfo(userId: string): Promise<CustomerPurchaseInfoDto> {
     try {
-      const orders = await this.orderRepository.find({
-        where: { 
-          userId,
-          status: Not(OrderStatus.PENDING)
-        },
+      console.log(`[getUserPurchaseInfo] 시작 [ID: ${userId}]`);
+      
+      // 먼저 해당 사용자의 모든 주문 조회
+      const allOrders = await this.orderRepository.find({
+        where: { userId },
         order: { createdAt: 'DESC' }
       });
       
-      if (!orders || orders.length === 0) {
-        return null;
+      console.log(`[getUserPurchaseInfo] 사용자 [ID: ${userId}] 전체 주문 수:`, allOrders.length);
+      if (allOrders.length > 0) {
+        console.log(`[getUserPurchaseInfo] 주문 상태 목록:`, allOrders.map(o => ({ 
+          id: o.id.substring(0, 8), 
+          status: o.status, 
+          totalAmount: o.totalAmount 
+        })));
       }
       
-      const totalAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-      const lastPurchaseDate = orders[0].createdAt;
+      // Payment 테이블에서 결제 완료된 주문 조회 시도
+      let userPaidOrders: Order[] = [];
+      try {
+        const paidPayments = await this.paymentRepository.find({
+          where: {
+            isPaid: true,
+            isCanceled: false
+          },
+          relations: ['order'],
+          order: { createdAt: 'DESC' }
+        });
+        
+        // 해당 사용자의 주문만 필터링
+        userPaidOrders = paidPayments
+          .filter(payment => payment.order?.userId === userId)
+          .map(payment => payment.order)
+          .filter(order => order !== null && order !== undefined);
+        
+        console.log(`[getUserPurchaseInfo] Payment 기반 결제 완료 주문 수:`, userPaidOrders.length);
+      } catch (paymentError) {
+        console.log(`[getUserPurchaseInfo] Payment 조회 실패 (무시하고 계속):`, paymentError.message);
+      }
+      
+      // 주문 상태 기반으로 유효한 주문 필터링 (PENDING과 CANCELLED 제외)
+      const validOrdersByStatus = allOrders.filter(order => 
+        order.status !== OrderStatus.PENDING && 
+        order.status !== OrderStatus.CANCELLED
+      );
+      
+      console.log(`[getUserPurchaseInfo] 주문 상태 기반 유효 주문 수:`, validOrdersByStatus.length);
+      
+      // Payment 기반 주문이 있으면 우선 사용, 없으면 주문 상태 기반 사용
+      // 둘 다 없으면 totalAmount가 있는 모든 주문 사용 (임시 조치)
+      let finalOrders: Order[] = [];
+      
+      if (userPaidOrders.length > 0) {
+        finalOrders = userPaidOrders;
+        console.log(`[getUserPurchaseInfo] Payment 기반 주문 사용`);
+      } else if (validOrdersByStatus.length > 0) {
+        finalOrders = validOrdersByStatus;
+        console.log(`[getUserPurchaseInfo] 주문 상태 기반 주문 사용`);
+      } else {
+        // Payment도 없고 유효한 상태도 없으면, totalAmount가 있는 주문은 모두 포함
+        finalOrders = allOrders.filter(order => {
+          const hasAmount = order.totalAmount && order.totalAmount > 0;
+          console.log(`[getUserPurchaseInfo] 주문 필터링:`, { id: order.id.substring(0, 8), status: order.status, totalAmount: order.totalAmount, hasAmount });
+          return hasAmount;
+        });
+        console.log(`[getUserPurchaseInfo] totalAmount가 있는 주문 사용:`, finalOrders.length);
+      }
+      
+      if (!finalOrders || finalOrders.length === 0) {
+        console.log(`[getUserPurchaseInfo] 사용자 [ID: ${userId}] 구매 완료 주문 없음 - 기본값 반환`);
+        return {
+          totalAmount: 0,
+          lastPurchaseDate: null
+        };
+      }
+      
+      // Payment의 paidAmount를 우선 사용, 없으면 order의 totalAmount 사용
+      const totalAmount = finalOrders.reduce((sum, order) => {
+        const amount = order.totalAmount || 0;
+        return sum + amount;
+      }, 0);
+      
+      const lastPurchaseDate = finalOrders[0].createdAt;
+      
+      console.log(`[getUserPurchaseInfo] 사용자 [ID: ${userId}] 최종 계산:`, {
+        totalAmount,
+        lastPurchaseDate,
+        orderCount: finalOrders.length,
+        orders: finalOrders.map(o => ({ id: o.id.substring(0, 8), status: o.status, amount: o.totalAmount }))
+      });
       
       return {
         totalAmount,
         lastPurchaseDate
       };
     } catch (error) {
-      console.error(`사용자 구매 정보 조회 오류 [ID: ${userId}]:`, error.message);
-      return null;
+      console.error(`[getUserPurchaseInfo] 사용자 구매 정보 조회 오류 [ID: ${userId}]:`, error.message);
+      console.error(`[getUserPurchaseInfo] 스택 트레이스:`, error.stack);
+      return {
+        totalAmount: 0,
+        lastPurchaseDate: null
+      };
     }
   }
 

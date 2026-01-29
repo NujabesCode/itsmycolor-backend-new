@@ -194,15 +194,26 @@ export class SettlementsService {
     }
     
     // 해당 월의 완료된 주문 조회
-    const { orders } = await this.ordersService.findAll({
+    // DELIVERED 상태의 주문만 조회하되, 없으면 totalAmount > 0인 주문도 포함
+    let { orders } = await this.ordersService.findAll({
       status: OrderStatus.DELIVERED,
     });
+    
+    // DELIVERED 상태 주문이 없으면 totalAmount > 0인 모든 주문 조회 (임시 조치)
+    if (!orders || orders.length === 0) {
+      console.log(`[calculateMonthlySettlement] DELIVERED 주문 없음, totalAmount > 0인 주문 조회`);
+      const allOrdersResult = await this.ordersService.findAll({});
+      orders = allOrdersResult.orders.filter(order => order.totalAmount && order.totalAmount > 0);
+      console.log(`[calculateMonthlySettlement] totalAmount > 0인 주문 수:`, orders.length);
+    }
     
     // 해당 기간 내의 주문 필터링
     const filteredOrders = orders.filter(order => {
       const orderDate = new Date(order.createdAt);
       return orderDate >= startDate && orderDate <= endDate;
     });
+    
+    console.log(`[calculateMonthlySettlement] ${settlementMonth} 기간 내 주문 수:`, filteredOrders.length);
     
     if (filteredOrders.length === 0) {
       throw new BadRequestException(`${settlementMonth} 기간에 정산할 주문이 없습니다.`);

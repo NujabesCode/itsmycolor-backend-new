@@ -7,6 +7,7 @@ import { Order } from '../orders/entities/order.entity';
 import { Product } from '../products/entities/product.entity';
 import { ColorAnalysis } from '../color-analysis/entities/color-analysis.entity';
 import { ConsultingAppointment } from '../color-analysis/entities/consulting-appointment.entity';
+import { Payment } from '../payments/entities/payment.entity';
 import { UsersModule } from '../users/users.module';
 
 @Module({
@@ -16,7 +17,8 @@ import { UsersModule } from '../users/users.module';
       Order,
       Product,
       ColorAnalysis,
-      ConsultingAppointment
+      ConsultingAppointment,
+      Payment
     ]),
     UsersModule
   ],
