@@ -17,6 +17,7 @@ import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { CustomerFilterDto, CustomerResponseDto, AdminDashboardResponseDto } from './dto/admin-customer.dto';
+import { AnalysisFilterDto } from './dto/analysis-filter.dto';
 import { User } from '../users/entities/user.entity';
 import {
   UpdateUserRoleDto,
@@ -56,9 +57,9 @@ export class AdminController {
   @Get('dashboard')
   @ApiOperation({ summary: '대시보드 데이터 조회' })
   @ApiResponse({ status: 200, description: '대시보드 데이터 반환', type: AdminDashboardResponseDto })
-  async getDashboardData() {
+  async getDashboardData(@Query() filters: AnalysisFilterDto) {
     try {
-      return await this.adminService.getDashboardData();
+      return await this.adminService.getDashboardData(filters.startDate, filters.endDate);
     } catch (error) {
       this.logger.error(`대시보드 데이터 조회 중 오류 발생: ${error.message}`, error.stack);
       // 빈 대시보드 데이터 반환하여 프론트엔드가 중단되지 않도록 처리

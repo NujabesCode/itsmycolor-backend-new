@@ -377,7 +377,7 @@ export class AdminService {
     }
   }
 
-  async getDashboardData(): Promise<AdminDashboardResponseDto> {
+  async getDashboardData(startDate?: string, endDate?: string): Promise<AdminDashboardResponseDto> {
     try {
       // 각 데이터 조회 시 개별적으로 try-catch로 처리하여 부분 실패해도 전체 실패하지 않도록 구현
       
@@ -398,7 +398,7 @@ export class AdminService {
       // 월별 매출 추이
       let monthlySales;
       try {
-        monthlySales = await this.getMonthlySalesData();
+        monthlySales = await this.getMonthlySalesData(startDate, endDate);
       } catch (error) {
         console.error('월별 매출 추이 조회 중 오류 발생:', error.message);
         monthlySales = [];
@@ -467,10 +467,23 @@ export class AdminService {
       let totalOrders = 0;
       let totalSales = 0;
       try {
-        const ordersWithAmount = await this.orderRepository.find({
-          where: {
-            totalAmount: Not(0)
+        const whereCondition: any = {
+          totalAmount: Not(0)
+        };
+        
+        // 날짜 필터 적용
+        if (startDate || endDate) {
+          const dateFilter: any = {};
+          if (startDate) {
+            dateFilter.createdAt = Between(new Date(startDate), endDate ? new Date(endDate) : new Date());
+          } else if (endDate) {
+            dateFilter.createdAt = Between(new Date(0), new Date(endDate));
           }
+          Object.assign(whereCondition, dateFilter);
+        }
+        
+        const ordersWithAmount = await this.orderRepository.find({
+          where: whereCondition
         });
         totalOrders = ordersWithAmount.length;
         totalSales = ordersWithAmount.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
@@ -521,32 +534,52 @@ export class AdminService {
     }
   }
 
-  private async getMonthlySalesData(): Promise<{ month: string; amount: number }[]> {
+  private async getMonthlySalesData(startDate?: string, endDate?: string): Promise<{ month: string; amount: number }[]> {
     try {
-      const today = new Date();
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(today.getMonth() - 5);
+      let dateStart: Date;
+      let dateEnd: Date;
       
-      // 첫날로 설정
-      sixMonthsAgo.setDate(1);
-      sixMonthsAgo.setHours(0, 0, 0, 0);
+      if (startDate && endDate) {
+        // 사용자가 지정한 날짜 범위 사용
+        dateStart = new Date(startDate);
+        dateEnd = new Date(endDate);
+        dateEnd.setHours(23, 59, 59, 999); // 종료일의 마지막 시간까지 포함
+      } else if (startDate) {
+        // 시작일만 지정된 경우
+        dateStart = new Date(startDate);
+        dateEnd = new Date();
+      } else if (endDate) {
+        // 종료일만 지정된 경우
+        dateStart = new Date(0); // 최초 날짜부터
+        dateEnd = new Date(endDate);
+        dateEnd.setHours(23, 59, 59, 999);
+      } else {
+        // 날짜가 지정되지 않은 경우 기본값 (최근 6개월)
+        dateEnd = new Date();
+        dateStart = new Date();
+        dateStart.setMonth(dateEnd.getMonth() - 5);
+        dateStart.setDate(1);
+      }
+      
+      dateStart.setHours(0, 0, 0, 0);
       
       // totalAmount > 0인 주문만 조회 (PENDING 상태도 포함)
       const orders = await this.orderRepository.find({
         where: {
-          createdAt: Between(sixMonthsAgo, today),
+          createdAt: Between(dateStart, dateEnd),
         }
       });
       
       // totalAmount > 0인 주문만 필터링
       const validOrders = orders.filter(order => order.totalAmount && order.totalAmount > 0);
       
+      // 날짜 범위에 포함된 모든 월 계산
       const months = {};
-      for (let i = 0; i <= 5; i++) {
-        const date = new Date();
-        date.setMonth(today.getMonth() - i);
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const currentDate = new Date(dateStart);
+      while (currentDate <= dateEnd) {
+        const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
         months[monthKey] = 0;
+        currentDate.setMonth(currentDate.getMonth() + 1);
       }
       
       // 주문별 월 매출 합산
