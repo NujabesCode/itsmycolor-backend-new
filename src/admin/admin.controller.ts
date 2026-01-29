@@ -70,6 +70,7 @@ export class AdminController {
           vipCustomers: 0
         },
         totalOrders: 0,
+        totalSales: 0,
         monthlySales: [],
         bodyTypeAnalysis: [],
         topProducts: [],

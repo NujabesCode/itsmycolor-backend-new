@@ -133,6 +133,9 @@ export class AdminDashboardResponseDto {
   @ApiProperty({ description: '총 주문 건수' })
   totalOrders: number;
 
+  @ApiProperty({ description: '총 매출액' })
+  totalSales: number;
+
   @ApiProperty({ description: '월별 매출 추이 (최근 6개월)' })
   monthlySales: { month: string; amount: number }[];
 

@@ -463,23 +463,28 @@ export class AdminService {
         bodyTypeSales = [];
       }
       
-      // 총 주문 건수
+      // 총 주문 건수 및 총 매출액
       let totalOrders = 0;
+      let totalSales = 0;
       try {
-        totalOrders = await this.orderRepository.count({
+        const ordersWithAmount = await this.orderRepository.find({
           where: {
-            totalAmount: Not(0) // totalAmount가 0이 아닌 주문만 카운트
+            totalAmount: Not(0)
           }
         });
-        console.log(`[getDashboardData] 총 주문 건수: ${totalOrders}`);
+        totalOrders = ordersWithAmount.length;
+        totalSales = ordersWithAmount.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+        console.log(`[getDashboardData] 총 주문 건수: ${totalOrders}, 총 매출액: ${totalSales}`);
       } catch (error) {
-        console.error('총 주문 건수 조회 중 오류 발생:', error.message);
+        console.error('총 주문 건수/매출액 조회 중 오류 발생:', error.message);
         totalOrders = 0;
+        totalSales = 0;
       }
       
       return {
         customerStatistics,
         totalOrders,
+        totalSales,
         monthlySales,
         bodyTypeAnalysis,
         topProducts,
@@ -499,6 +504,7 @@ export class AdminService {
           vipCustomers: 0
         },
         totalOrders: 0,
+        totalSales: 0,
         monthlySales: [],
         bodyTypeAnalysis: [],
         topProducts: [],
@@ -525,12 +531,15 @@ export class AdminService {
       sixMonthsAgo.setDate(1);
       sixMonthsAgo.setHours(0, 0, 0, 0);
       
+      // totalAmount > 0인 주문만 조회 (PENDING 상태도 포함)
       const orders = await this.orderRepository.find({
         where: {
           createdAt: Between(sixMonthsAgo, today),
-          status: Not(OrderStatus.PENDING)
         }
       });
+      
+      // totalAmount > 0인 주문만 필터링
+      const validOrders = orders.filter(order => order.totalAmount && order.totalAmount > 0);
       
       const months = {};
       for (let i = 0; i <= 5; i++) {
@@ -541,7 +550,7 @@ export class AdminService {
       }
       
       // 주문별 월 매출 합산
-      orders.forEach(order => {
+      validOrders.forEach(order => {
         const date = order.createdAt;
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         if (months[monthKey] !== undefined) {
@@ -582,10 +591,11 @@ export class AdminService {
 
   private async getTopProducts(): Promise<{ name: string; sales: number }[]> {
     try {
+      // totalAmount > 0인 주문만 포함
       const topProducts = await this.orderRepository
         .createQueryBuilder('order')
         .innerJoin('order.orderItems', 'orderItem')
-        .where('order.status != :status', { status: OrderStatus.PENDING })
+        .where('order.totalAmount > 0')
         .select(
           'orderItem.productName as name, SUM(orderItem.quantity) as sales',
         )
@@ -645,11 +655,11 @@ export class AdminService {
         ...new Set(colorAnalyses.map((analysis) => analysis.userId)),
       ];
 
-      // 컨설팅 후 구매한 사용자 수 계산
+      // 컨설팅 후 구매한 사용자 수 계산 (totalAmount > 0인 주문만)
       const purchasedAfterConsulting = await this.orderRepository
         .createQueryBuilder('order')
         .where('order.userId IN (:...userIds)', { userIds: consultingUserIds })
-        .andWhere('order.status != :status', { status: OrderStatus.PENDING })
+        .andWhere('order.totalAmount > 0')
         .getCount();
       
       // 전체 전환율 계산
@@ -685,17 +695,18 @@ export class AdminService {
   }[]> {
     try {
       // 실제 데이터 기반으로 브랜드별 판매 현황 조회
-      // 테이블 구조에 따라 적절히 수정 필요
+      // totalAmount > 0인 주문만 포함
+      // orderItem에서 브랜드 정보를 가져오거나, order의 totalAmount를 사용
       const brandSales = await this.orderRepository
         .createQueryBuilder('order')
-        .innerJoin('order.orderItems', 'orderItem')
-        .innerJoin('orderItem.product', 'product')
-        .innerJoin('product.brandEntity', 'brand')
-        .where('order.status != :status', { status: OrderStatus.PENDING })
+        .leftJoin('order.orderItems', 'orderItem')
+        .leftJoin('orderItem.product', 'product')
+        .leftJoin('product.brandEntity', 'brand')
+        .where('order.totalAmount > 0')
         .select([
-          'brand.name as brand',
+          'COALESCE(brand.name, \'미지정\') as brand',
           'COUNT(DISTINCT order.id) as count',
-          'SUM(orderItem.price * orderItem.quantity) as amount',
+          'SUM(order.totalAmount) as amount',
         ])
         .groupBy('brand.name')
         .orderBy('amount', 'DESC')
@@ -734,13 +745,14 @@ export class AdminService {
   private async getBodyTypeSales(): Promise<{ type: string; percentage: number }[]> {
     try {
       // 주문 아이템과 컬러 분석 데이터 연동 쿼리
+      // totalAmount > 0인 주문만 포함
       const salesByBodyType = await this.orderRepository
         .createQueryBuilder('order')
-        .innerJoin('order.user', 'user')
-        .innerJoin('user.colorAnalyses', 'colorAnalysis')
-        .where('order.status != :status', { status: OrderStatus.PENDING })
+        .leftJoin('order.user', 'user')
+        .leftJoin('user.colorAnalyses', 'colorAnalysis')
+        .where('order.totalAmount > 0')
         .select([
-          'colorAnalysis.bodyType as type',
+          'COALESCE(colorAnalysis.bodyType, \'미지정\') as type',
           'SUM(order.totalAmount) as totalAmount',
         ])
         .groupBy('colorAnalysis.bodyType')
