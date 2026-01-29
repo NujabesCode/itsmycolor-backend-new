@@ -76,23 +76,6 @@ export class OrdersController {
     return this.ordersService.findByUserId(user.id, { page, limit, status, search, startDate, endDate });
   }
 
-  @Get(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '주문 상세 조회' })
-  @ApiResponse({ 
-    status: 200, 
-    description: '주문 상세 정보 반환', 
-    type: OrderDetailResponseDto 
-  })
-  @ApiParam({ name: 'id', description: '주문 ID' })
-  async findOne(
-    @Param('id') id: string,
-    @GetUser() user: User,
-  ) {
-    return this.ordersService.findOne(id, user.id);
-  }
-
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
@@ -117,6 +100,39 @@ export class OrdersController {
     @Query('search') search?: string,
   ) {
     return this.ordersService.findAll({ page, limit, status, startDate, endDate, search });
+  }
+
+  @Get('admin/:id')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '관리자용 주문 상세 조회' })
+  @ApiResponse({ 
+    status: 200, 
+    description: '주문 상세 정보 반환', 
+    type: OrderDetailResponseDto 
+  })
+  @ApiParam({ name: 'id', description: '주문 ID' })
+  async findOneForAdmin(
+    @Param('id') id: string,
+  ) {
+    return this.ordersService.findOne(id);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '주문 상세 조회' })
+  @ApiResponse({ 
+    status: 200, 
+    description: '주문 상세 정보 반환', 
+    type: OrderDetailResponseDto 
+  })
+  @ApiParam({ name: 'id', description: '주문 ID' })
+  async findOne(
+    @Param('id') id: string,
+    @GetUser() user: User,
+  ) {
+    return this.ordersService.findOne(id, user.id);
   }
 
   @Get('brands/:brandId')
