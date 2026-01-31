@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SettlementsController } from './settlements.controller';
 import { SettlementsService } from './settlements.service';
+import { TaxInvoicesController } from './tax-invoices.controller';
+import { TaxInvoicesService } from './tax-invoices.service';
 import { Settlement } from './entities/settlement.entity';
 import { Commission } from './entities/commission.entity';
 import { TaxInvoice } from './entities/tax-invoice.entity';
@@ -14,8 +16,8 @@ import { OrdersModule } from '../orders.module';
     TypeOrmModule.forFeature([Settlement, Commission, TaxInvoice, TaxDocument, Order]),
     OrdersModule,
   ],
-  controllers: [SettlementsController],
-  providers: [SettlementsService],
-  exports: [SettlementsService],
+  controllers: [SettlementsController, TaxInvoicesController],
+  providers: [SettlementsService, TaxInvoicesService],
+  exports: [SettlementsService, TaxInvoicesService],
 })
 export class SettlementsModule {} 

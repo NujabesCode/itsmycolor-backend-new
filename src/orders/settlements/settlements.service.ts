@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Settlement, SettlementStatus } from './entities/settlement.entity';
@@ -11,6 +11,7 @@ import {
 } from './dto/settlement.dto';
 import { OrdersService } from '../orders.service';
 import { OrderStatus, Order } from '../entities/order.entity';
+import { TaxInvoicesService } from './tax-invoices.service';
 
 @Injectable()
 export class SettlementsService {
@@ -22,6 +23,8 @@ export class SettlementsService {
     @InjectRepository(Commission)
     private commissionRepository: Repository<Commission>,
     private ordersService: OrdersService,
+    @Inject(forwardRef(() => TaxInvoicesService))
+    private taxInvoicesService: TaxInvoicesService,
   ) {}
 
   async create(createSettlementDto: CreateSettlementDto): Promise<SettlementResponseDto> {
@@ -700,6 +703,14 @@ export class SettlementsService {
     settlement.settledAt = new Date();
     
     const updatedSettlement = await this.settlementRepository.save(settlement);
+    
+    // 정산 완료 시 세금계산서 자동 생성
+    try {
+      await this.taxInvoicesService.createForSettlement(id);
+    } catch (error) {
+      console.error('세금계산서 생성 실패:', error);
+      // 세금계산서 생성 실패해도 정산 완료는 유지
+    }
     
     return new SettlementResponseDto({
       id: updatedSettlement.id,
