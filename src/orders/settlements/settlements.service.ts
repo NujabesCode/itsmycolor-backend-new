@@ -37,9 +37,10 @@ export class SettlementsService {
       queryBuilder.andWhere('settlement.brandId = :brandId', { brandId });
     }
 
-    if (year && month) {
+    if (year !== undefined && month !== undefined && year > 0 && month > 0) {
+      const monthStr = String(month).padStart(2, '0');
       queryBuilder.andWhere('settlement.settlementMonth = :settlementMonth', {
-        settlementMonth: `${year}-${month.toString().padStart(2, '0')}`,
+        settlementMonth: `${year}-${monthStr}`,
       });
     }
 
@@ -187,7 +188,8 @@ export class SettlementsService {
     endDate.setHours(23, 59, 59, 999);
     
     // 해당 월의 정산이 이미 있는지 확인
-    const settlementMonth = `${targetYear2}-${targetMonth.toString().padStart(2, '0')}`;
+    const monthStr = String(targetMonth).padStart(2, '0');
+    const settlementMonth = `${targetYear2}-${monthStr}`;
     const existingSettlement = await this.settlementRepository.findOne({
       where: { settlementMonth },
     });
