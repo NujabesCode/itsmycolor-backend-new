@@ -341,10 +341,8 @@ export class SettlementsService {
       startDate = new Date(0); // 1970-01-01
       endDate = new Date();
       endDate.setHours(23, 59, 59, 999);
-      // 전체 기간인 경우 현재 날짜로 설정 (YYYY-MM 형식)
-      const now = new Date();
-      const monthStr = String(now.getMonth() + 1).padStart(2, '0');
-      settlementMonth = `${now.getFullYear()}-${monthStr}-전체`;
+      // 전체 기간인 경우 "전체"로 설정
+      settlementMonth = '전체';
       
       // 전체 기간인 경우 중복 체크는 하지 않음 (같은 브랜드의 전체 기간 정산은 여러 개 생성 가능)
     }
@@ -457,11 +455,11 @@ export class SettlementsService {
     
     if (totalSales === 0) {
       // 더 자세한 에러 메시지 제공
-      const brandName = orders.length > 0 ? '해당 브랜드' : '해당 브랜드';
       const orderCount = allOrders.length;
       const brandOrderCount = orders.length;
+      const periodText = settlementMonth === '전체' ? '전체 기간' : `${settlementMonth} 기간`;
       throw new BadRequestException(
-        `${settlementMonth} 기간에 ${brandId} 브랜드의 정산할 주문이 없습니다. ` +
+        `${periodText}에 해당 브랜드의 정산할 주문이 없습니다. ` +
         `(전체 주문 수: ${orderCount}, 해당 브랜드 포함 주문 수: ${brandOrderCount})`
       );
     }
