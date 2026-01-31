@@ -125,7 +125,9 @@ export class SettlementsController {
     @Query('month') month?: number,
     @Query('commissionRate') commissionRate?: number,
   ) {
-    return this.settlementsService.calculateBrandSettlement(brandId, year, month, commissionRate || 12);
+    // commissionRate가 undefined일 때만 기본값 12 사용 (0도 유효한 값)
+    const finalCommissionRate = commissionRate !== undefined ? commissionRate : 12;
+    return this.settlementsService.calculateBrandSettlement(brandId, year, month, finalCommissionRate);
   }
 
   @Post('brands/:brandId')
