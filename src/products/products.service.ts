@@ -536,6 +536,12 @@ export class ProductsService {
       queryBuilder.orderBy('product.createdAt', 'ASC');
     }
 
+    // 디버깅: 쿼리 빌더의 SQL 확인
+    const sql = queryBuilder.getSql();
+    const params = queryBuilder.getParameters();
+    console.log(`[findAllForAdmin] SQL:`, sql);
+    console.log(`[findAllForAdmin] Parameters:`, params);
+
     const [products, total] = await queryBuilder
       .skip(skip)
       .take(limit)
@@ -545,6 +551,17 @@ export class ProductsService {
     console.log(`[findAllForAdmin] isAvailable 상태별 개수:`, {
       available: products.filter(p => p.isAvailable).length,
       pending: products.filter(p => !p.isAvailable).length,
+    });
+    
+    // 각 상품의 상세 정보 로깅
+    products.forEach((p, idx) => {
+      console.log(`[findAllForAdmin] 상품 ${idx + 1}:`, {
+        id: p.id,
+        name: p.name,
+        isAvailable: p.isAvailable,
+        brandId: p.brandEntity?.id || '없음',
+        brandName: p.brandEntity?.name || '없음',
+      });
     });
 
     const lastPage = Math.ceil(total / limit);
