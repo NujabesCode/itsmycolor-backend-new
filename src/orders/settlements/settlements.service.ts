@@ -286,23 +286,30 @@ export class SettlementsService {
       startDate = new Date(0); // 1970-01-01
       endDate = new Date();
       endDate.setHours(23, 59, 59, 999);
-      settlementMonth = '전체';
+      // 전체 기간인 경우 현재 날짜로 설정 (YYYY-MM 형식)
+      const now = new Date();
+      settlementMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-전체`;
     }
     
     // 해당 브랜드의 해당 기간 내 주문 조회
-    // 주문 전체가 아닌 해당 브랜드의 상품만 포함된 주문 아이템을 조회해야 함
+    // 모든 주문을 가져온 후 orderItems에서 해당 브랜드 상품만 필터링
     const queryBuilder = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.orderItems', 'orderItems')
       .leftJoinAndSelect('orderItems.product', 'product')
       .leftJoinAndSelect('product.brandEntity', 'brand')
-      .where('brand.id = :brandId', { brandId })
-      .andWhere('order.createdAt BETWEEN :startDate AND :endDate', {
+      .where('order.createdAt BETWEEN :startDate AND :endDate', {
         startDate,
         endDate,
       });
     
-    const orders = await queryBuilder.getMany();
+    const allOrders = await queryBuilder.getMany();
+    
+    // 해당 브랜드의 상품이 포함된 주문만 필터링
+    const orders = allOrders.filter(order => {
+      if (!order.orderItems || order.orderItems.length === 0) return false;
+      return order.orderItems.some(item => item.product?.brandEntity?.id === brandId);
+    });
     
     // 해당 브랜드의 상품 금액만 계산
     let totalSales = 0;
