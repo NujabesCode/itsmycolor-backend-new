@@ -70,6 +70,12 @@ export class ProductsService {
     createProductDto: CreateProductDto,
     files?: Express.Multer.File[],
   ): Promise<ProductDetailResponseDto> {
+    console.log('[ProductsService.create] 상품 등록 요청 시작:', {
+      name: createProductDto.name,
+      brandId: createProductDto.brandId,
+      isAvailable: createProductDto.isAvailable,
+    });
+    
     // PD-012: 중복 등록 검증 - 동일 상품명 & 모델명 체크
     const whereCondition: any = {
       name: createProductDto.name,
