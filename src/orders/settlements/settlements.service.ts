@@ -45,14 +45,63 @@ export class SettlementsService {
     }
 
     // FC-001: 기간 필터 추가
+    // startDate와 endDate가 있으면 정산 기간(settlementMonth)이 해당 기간과 겹치는 정산을 조회
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      queryBuilder.andWhere('settlement.createdAt BETWEEN :startDate AND :endDate', {
-        startDate: start,
-        endDate: end,
-      });
+      
+      // 정산 기간(settlementMonth)이 검색 기간과 겹치는지 확인
+      // settlementMonth 형식: "YYYY-MM" 또는 "YYYY-MM-전체"
+      // 검색 기간의 시작 월과 종료 월 계산
+      const startYear = start.getFullYear();
+      const startMonth = start.getMonth() + 1;
+      const endYear = end.getFullYear();
+      const endMonth = end.getMonth() + 1;
+      
+      // settlementMonth를 파싱하여 검색 기간과 겹치는지 확인
+      // 예: settlementMonth가 "2024-01"이고 검색 기간이 2024-01-01 ~ 2024-01-31이면 포함
+      // 또는 settlementMonth가 "2024-01-전체"이고 검색 기간이 2024-01-01 ~ 2024-12-31이면 포함
+      const startMonthStr = `${startYear}-${String(startMonth).padStart(2, '0')}`;
+      const endMonthStr = `${endYear}-${String(endMonth).padStart(2, '0')}`;
+      
+      // settlementMonth가 검색 기간의 시작 월과 종료 월 사이에 있는 정산 조회
+      // 또는 "전체" 기간 정산의 경우 시작 월이 검색 기간 내에 있는지 확인
+      queryBuilder.andWhere(
+        '(settlement.settlementMonth >= :startMonthStr AND settlement.settlementMonth <= :endMonthStr) OR (settlement.settlementMonth LIKE :startMonthPattern) OR (settlement.settlementMonth LIKE :endMonthPattern)',
+        {
+          startMonthStr,
+          endMonthStr,
+          startMonthPattern: `${startMonthStr}-%`,
+          endMonthPattern: `${endMonthStr}-%`,
+        }
+      );
+    } else if (startDate) {
+      // startDate만 있는 경우
+      const start = new Date(startDate);
+      const startYear = start.getFullYear();
+      const startMonth = start.getMonth() + 1;
+      const startMonthStr = `${startYear}-${String(startMonth).padStart(2, '0')}`;
+      queryBuilder.andWhere(
+        'settlement.settlementMonth >= :startMonthStr OR settlement.settlementMonth LIKE :startMonthPattern',
+        {
+          startMonthStr,
+          startMonthPattern: `${startMonthStr}-%`,
+        }
+      );
+    } else if (endDate) {
+      // endDate만 있는 경우
+      const end = new Date(endDate);
+      const endYear = end.getFullYear();
+      const endMonth = end.getMonth() + 1;
+      const endMonthStr = `${endYear}-${String(endMonth).padStart(2, '0')}`;
+      queryBuilder.andWhere(
+        'settlement.settlementMonth <= :endMonthStr OR settlement.settlementMonth LIKE :endMonthPattern',
+        {
+          endMonthStr,
+          endMonthPattern: `${endMonthStr}-%`,
+        }
+      );
     }
 
     const settlements = await queryBuilder
@@ -261,7 +310,7 @@ export class SettlementsService {
     brandId: string,
     year?: number,
     month?: number,
-    commissionRate: number = 12,
+    commissionRate: number = 12, // 기본값은 12이지만, 컨트롤러에서 0도 전달 가능
   ): Promise<SettlementResponseDto> {
     try {
       console.log(`[calculateBrandSettlement] 시작: brandId=${brandId}, year=${year}, month=${month}, commissionRate=${commissionRate}`);
