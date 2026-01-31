@@ -314,8 +314,9 @@ export class SettlementsService {
     const savedSettlement = await this.settlementRepository.save(settlement);
     
     // 저장된 정산을 다시 조회하여 브랜드 정보 포함
+    const settlementId = (savedSettlement as any).id || (savedSettlement as Settlement).id;
     const settlementWithBrand = await this.settlementRepository.findOne({
-      where: { id: savedSettlement.id },
+      where: { id: settlementId },
       relations: ['brand'],
     });
     
