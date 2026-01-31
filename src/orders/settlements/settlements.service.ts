@@ -305,11 +305,15 @@ export class SettlementsService {
     
     const allOrders = await queryBuilder.getMany();
     
+    console.log(`[calculateBrandSettlement] 전체 주문 수: ${allOrders.length}`);
+    
     // 해당 브랜드의 상품이 포함된 주문만 필터링
     const orders = allOrders.filter(order => {
       if (!order.orderItems || order.orderItems.length === 0) return false;
       return order.orderItems.some(item => item.product?.brandEntity?.id === brandId);
     });
+    
+    console.log(`[calculateBrandSettlement] 해당 브랜드(${brandId}) 포함 주문 수: ${orders.length}`);
     
     // 해당 브랜드의 상품 금액만 계산
     let totalSales = 0;
@@ -333,6 +337,7 @@ export class SettlementsService {
       if (brandTotal > 0) {
         totalSales += brandTotal;
         orderIds.add(order.id);
+        console.log(`[calculateBrandSettlement] 주문 ${order.id}: 브랜드 상품 ${brandItems.length}개, 금액 ${brandTotal}원`);
       }
     }
     
