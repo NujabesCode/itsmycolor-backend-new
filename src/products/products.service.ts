@@ -512,7 +512,7 @@ export class ProductsService {
   }): Promise<{ products: ProductResponseDto[]; total: number; page: number; lastPage: number }> {
     const {
       page = 1,
-      limit = 12,
+      limit = 100, // 관리자 페이지에서는 더 많은 상품을 한 번에 표시
       sort = 'latest',
       bodyType,
       search,
