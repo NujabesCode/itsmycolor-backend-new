@@ -301,22 +301,22 @@ export class SettlementsService {
     const actualSettlementAmount = totalSales - commissionAmount;
     
     // 정산 정보 생성
-    const createSettlementDto: any = {
+    const settlement = this.settlementRepository.create({
       settlementMonth,
       totalSales,
       commissionRate,
       commissionAmount,
       actualSettlementAmount,
       brandId,
-    };
+    });
     
-    const settlement = this.settlementRepository.create(createSettlementDto);
     const savedSettlement = await this.settlementRepository.save(settlement);
     
     // 저장된 정산을 다시 조회하여 브랜드 정보 포함
-    const settlementId = (savedSettlement as any).id || (savedSettlement as Settlement).id;
+    // save()는 단일 엔티티를 반환하지만 타입 추론 문제로 인해 명시적 타입 단언 사용
+    const settlementEntity = Array.isArray(savedSettlement) ? savedSettlement[0] : savedSettlement;
     const settlementWithBrand = await this.settlementRepository.findOne({
-      where: { id: settlementId },
+      where: { id: settlementEntity.id },
       relations: ['brand'],
     });
     
