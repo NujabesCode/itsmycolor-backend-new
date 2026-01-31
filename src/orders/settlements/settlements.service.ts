@@ -366,19 +366,29 @@ export class SettlementsService {
       brandId,
     });
     
+    console.log(`[calculateBrandSettlement] 정산 저장 시도:`, { settlementMonth, totalSales, brandId });
     const savedSettlement = await this.settlementRepository.save(settlement);
+    console.log(`[calculateBrandSettlement] 정산 저장 완료:`, savedSettlement);
     
     // 저장된 정산을 다시 조회하여 브랜드 정보 포함
-    // save()는 단일 엔티티를 반환하지만 타입 추론 문제로 인해 명시적 타입 단언 사용
-    const settlementEntity = Array.isArray(savedSettlement) ? savedSettlement[0] : savedSettlement;
+    const settlementId = Array.isArray(savedSettlement) ? savedSettlement[0]?.id : savedSettlement?.id;
+    if (!settlementId) {
+      console.error(`[calculateBrandSettlement] 저장된 정산 ID를 찾을 수 없음:`, savedSettlement);
+      throw new NotFoundException('정산 저장 후 ID를 찾을 수 없습니다.');
+    }
+    
+    console.log(`[calculateBrandSettlement] 정산 ID로 조회:`, settlementId);
     const settlementWithBrand = await this.settlementRepository.findOne({
-      where: { id: settlementEntity.id },
+      where: { id: settlementId },
       relations: ['brand'],
     });
     
     if (!settlementWithBrand) {
+      console.error(`[calculateBrandSettlement] 정산 조회 실패: ID=${settlementId}`);
       throw new NotFoundException('정산 생성 후 조회에 실패했습니다.');
     }
+    
+    console.log(`[calculateBrandSettlement] 정산 조회 완료:`, settlementWithBrand);
     
     return new SettlementResponseDto({
       id: settlementWithBrand.id,
