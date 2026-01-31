@@ -54,7 +54,11 @@ export class FilesController {
       },
     },
   })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', {
+    limits: {
+      fileSize: 20 * 1024 * 1024, // 20MB 제한
+    },
+  }))
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Query('folder') folder = 'uploads',

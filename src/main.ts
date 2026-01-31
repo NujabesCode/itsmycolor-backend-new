@@ -29,6 +29,20 @@ async function bootstrap() {
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ extended: true, limit: '50mb' }));
   
+  // 전역 로깅 미들웨어: 모든 요청 로깅
+  app.use((req, res, next) => {
+    console.log(`[HTTP Request] ${req.method} ${req.path}`, {
+      method: req.method,
+      path: req.path,
+      query: req.query,
+      headers: {
+        authorization: req.headers.authorization ? 'Bearer ***' : 'none',
+        'content-type': req.headers['content-type'],
+      },
+    });
+    next();
+  });
+  
   // 전역 파이프 설정
   app.useGlobalPipes(
     new ValidationPipe({

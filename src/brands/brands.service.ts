@@ -30,11 +30,19 @@ export class BrandsService {
   ) {}
 
   async create(createBrandDto: CreateBrandDto, files?: { logo?: Express.Multer.File[], background?: Express.Multer.File[], brandPdf?: Express.Multer.File[] }): Promise<BrandResponseDto> {
+    console.log('[BrandsService] 브랜드 생성 시작:', {
+      brandName: createBrandDto.name,
+      companyName: createBrandDto.companyName,
+      email: createBrandDto.email,
+    });
+    
     const user = await this.usersService.findByEmail('brand-pending@itsmycolorshop.com');
     if (!user) {
+      console.error('[BrandsService] 임시 브랜드 저장 사용자를 찾을 수 없습니다: brand-pending@itsmycolorshop.com');
       throw new NotFoundException('임시 브랜드 저장 사용자를 찾을 수 없습니다.');
     }
-    console.log(createBrandDto);
+    console.log('[BrandsService] 임시 사용자 찾음:', user.id);
+    console.log('[BrandsService] 브랜드 생성 데이터:', createBrandDto);
     createBrandDto['userId'] = user.id;
 
     // recommendedColors가 문자열인 경우 처리
@@ -67,10 +75,17 @@ export class BrandsService {
     }
 
     const savedBrand = await this.brandRepository.save(brand);
+    console.log('[BrandsService] 브랜드 생성 완료:', {
+      id: savedBrand.id,
+      name: savedBrand.name,
+      status: savedBrand.status,
+    });
     return new BrandResponseDto(savedBrand);
   }
 
   async findAllForAdmin(status?: BrandStatus): Promise<BrandResponseDto[]> {
+    console.log('[BrandsService] 관리자 브랜드 목록 조회:', { status });
+    
     const queryBuilder = this.brandRepository
       .createQueryBuilder('brand')
       .leftJoinAndSelect('brand.products', 'products');
@@ -82,6 +97,8 @@ export class BrandsService {
     queryBuilder.orderBy('brand.createdAt', 'DESC');
 
     const brands = await queryBuilder.getMany();
+    console.log('[BrandsService] 조회된 브랜드 수:', brands.length);
+    console.log('[BrandsService] 브랜드 목록:', brands.map(b => ({ id: b.id, name: b.name, status: b.status })));
 
     return brands.map((brand) => new BrandResponseDto(brand));
   }

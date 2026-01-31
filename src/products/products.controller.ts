@@ -67,6 +67,12 @@ export class ProductsController {
     @Body() createProductDto: CreateProductDto,
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
+    console.log('[ProductsController.create] 상품 등록 API 호출됨:', {
+      name: createProductDto.name,
+      brandId: createProductDto.brandId,
+      isAvailable: createProductDto.isAvailable,
+      filesCount: files?.length || 0,
+    });
     return this.productsService.create(createProductDto, files);
   }
 

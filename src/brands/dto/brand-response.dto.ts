@@ -8,6 +8,9 @@ export class BrandResponseDto {
   @ApiProperty({ description: '브랜드명' })
   name: string;
 
+  @ApiProperty({ description: '회사명', required: false })
+  companyName?: string;
+
   @ApiProperty({ description: '브랜드 영문명', required: false })
   engName: string;
 
@@ -55,6 +58,30 @@ export class BrandResponseDto {
 
   @ApiProperty({ description: '신청자 ID', required: false })
   userId?: string;
+
+  @ApiProperty({ description: '문의 유형', required: false })
+  inquiryType?: string;
+
+  @ApiProperty({ description: '카테고리', required: false })
+  primaryCategory?: string;
+
+  @ApiProperty({ description: '서브 카테고리', required: false })
+  secondaryCategory?: string;
+
+  @ApiProperty({ description: 'SKU 개수', required: false })
+  skuCount?: number;
+
+  @ApiProperty({ description: '판매 채널', required: false })
+  salesChannels?: string;
+
+  @ApiProperty({ description: '타겟 고객', required: false })
+  targetCustomer?: string;
+
+  @ApiProperty({ description: '기타 요청사항', required: false })
+  etcRequest?: string;
+
+  @ApiProperty({ description: '브랜드 PDF URL', required: false })
+  brandPdfUrl?: string;
 
   @ApiProperty({ description: '반려 사유', required: false })
   rejectionReason?: string;
