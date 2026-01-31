@@ -301,7 +301,7 @@ export class SettlementsService {
     const actualSettlementAmount = totalSales - commissionAmount;
     
     // 정산 정보 생성
-    const createSettlementDto: CreateSettlementDto = {
+    const createSettlementDto: any = {
       settlementMonth,
       totalSales,
       commissionRate,
