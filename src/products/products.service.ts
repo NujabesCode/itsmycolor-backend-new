@@ -91,9 +91,18 @@ export class ProductsService {
       throw new BadRequestException('동일한 상품명과 모델명의 상품이 이미 등록되어 있습니다.');
     }
 
+    // 판매자가 상품을 등록할 때는 항상 승인 대기 상태로 시작
     const product = this.productRepository.create({
       ...createProductDto,
       brandEntity: { id: createProductDto.brandId },
+      // 판매자 등록 시 항상 isAvailable = false (승인 대기)
+      isAvailable: false,
+    });
+    
+    console.log('[ProductsService.create] 상품 생성:', {
+      name: product.name,
+      brandId: createProductDto.brandId,
+      isAvailable: product.isAvailable,
     });
     
     // 이미지 업로드 및 URL 저장
