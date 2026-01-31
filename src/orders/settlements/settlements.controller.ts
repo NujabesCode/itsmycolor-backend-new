@@ -116,13 +116,13 @@ export class SettlementsController {
   @ApiOperation({ summary: '브랜드별 정산 자동 계산' })
   @ApiResponse({ status: 201, description: '브랜드별 정산 계산 완료', type: SettlementResponseDto })
   @ApiQuery({ name: 'brandId', required: true, description: '브랜드 ID' })
-  @ApiQuery({ name: 'year', required: true, description: '년도' })
-  @ApiQuery({ name: 'month', required: true, description: '월' })
+  @ApiQuery({ name: 'year', required: false, description: '년도 (선택사항, 없으면 전체 기간)' })
+  @ApiQuery({ name: 'month', required: false, description: '월 (선택사항, 없으면 전체 기간)' })
   @ApiQuery({ name: 'commissionRate', required: false, description: '수수료율 (%)', type: Number })
   async calculateBrandSettlement(
     @Query('brandId') brandId: string,
-    @Query('year') year: number,
-    @Query('month') month: number,
+    @Query('year') year?: number,
+    @Query('month') month?: number,
     @Query('commissionRate') commissionRate?: number,
   ) {
     return this.settlementsService.calculateBrandSettlement(brandId, year, month, commissionRate || 12);

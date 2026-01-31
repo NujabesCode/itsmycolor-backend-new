@@ -257,29 +257,41 @@ export class SettlementsService {
   // 브랜드별 정산 자동 계산
   async calculateBrandSettlement(
     brandId: string,
-    year: number,
-    month: number,
+    year?: number,
+    month?: number,
     commissionRate: number = 12,
   ): Promise<SettlementResponseDto> {
-    // 해당 월의 시작일과 종료일 계산
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-    endDate.setHours(23, 59, 59, 999);
+    // 년도와 월이 제공되지 않으면 전체 기간으로 설정
+    let startDate: Date;
+    let endDate: Date;
+    let settlementMonth: string;
     
-    const settlementMonth = `${year}-${month.toString().padStart(2, '0')}`;
-    
-    // 해당 브랜드의 해당 월 정산이 이미 있는지 확인
-    const existingSettlement = await this.settlementRepository.findOne({
-      where: { brandId, settlementMonth },
-    });
-    
-    if (existingSettlement) {
-      throw new BadRequestException(`${settlementMonth} 기간의 ${brandId} 브랜드 정산이 이미 존재합니다.`);
+    if (year && month) {
+      // 해당 월의 시작일과 종료일 계산
+      startDate = new Date(year, month - 1, 1);
+      endDate = new Date(year, month, 0);
+      endDate.setHours(23, 59, 59, 999);
+      settlementMonth = `${year}-${month.toString().padStart(2, '0')}`;
+      
+      // 해당 브랜드의 해당 월 정산이 이미 있는지 확인
+      const existingSettlement = await this.settlementRepository.findOne({
+        where: { brandId, settlementMonth },
+      });
+      
+      if (existingSettlement) {
+        throw new BadRequestException(`${settlementMonth} 기간의 ${brandId} 브랜드 정산이 이미 존재합니다.`);
+      }
+    } else {
+      // 전체 기간: 최초 주문일부터 현재까지
+      startDate = new Date(0); // 1970-01-01
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+      settlementMonth = '전체';
     }
     
     // 해당 브랜드의 해당 기간 내 주문 조회
     // 주문 전체가 아닌 해당 브랜드의 상품만 포함된 주문 아이템을 조회해야 함
-    const orders = await this.orderRepository
+    const queryBuilder = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.orderItems', 'orderItems')
       .leftJoinAndSelect('orderItems.product', 'product')
@@ -288,8 +300,9 @@ export class SettlementsService {
       .andWhere('order.createdAt BETWEEN :startDate AND :endDate', {
         startDate,
         endDate,
-      })
-      .getMany();
+      });
+    
+    const orders = await queryBuilder.getMany();
     
     // 해당 브랜드의 상품 금액만 계산
     let totalSales = 0;
