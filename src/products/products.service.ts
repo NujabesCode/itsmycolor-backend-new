@@ -520,6 +520,7 @@ export class ProductsService {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.productRepository.createQueryBuilder('product');
+    // 브랜드 조인 (leftJoin으로 브랜드가 없어도 조회 가능)
     queryBuilder.leftJoinAndSelect('product.brandEntity', 'brand');
 
     // 필터링 조건 적용
@@ -536,7 +537,14 @@ export class ProductsService {
       );
     }
 
+    // 삭제되지 않은 상품만 조회 (isAvailable 필터링 없음 - 승인 대기 + 판매 중 모두 포함)
     queryBuilder.andWhere('product.isDeleted = FALSE');
+    
+    // 디버깅: 전체 상품 수 확인 (필터링 전)
+    const totalBeforeFilter = await this.productRepository.count({
+      where: { isDeleted: false },
+    });
+    console.log(`[findAllForAdmin] 전체 상품 수 (삭제 제외): ${totalBeforeFilter}`);
 
     // 정렬 방식 적용
     if (sort === 'latest') {
