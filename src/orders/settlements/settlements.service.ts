@@ -261,7 +261,10 @@ export class SettlementsService {
     month?: number,
     commissionRate: number = 12,
   ): Promise<SettlementResponseDto> {
-    // 년도와 월이 제공되지 않으면 전체 기간으로 설정
+    try {
+      console.log(`[calculateBrandSettlement] 시작: brandId=${brandId}, year=${year}, month=${month}, commissionRate=${commissionRate}`);
+      
+      // 년도와 월이 제공되지 않으면 전체 기간으로 설정
     let startDate: Date;
     let endDate: Date;
     let settlementMonth: string;
@@ -288,7 +291,8 @@ export class SettlementsService {
       endDate.setHours(23, 59, 59, 999);
       // 전체 기간인 경우 현재 날짜로 설정 (YYYY-MM 형식)
       const now = new Date();
-      settlementMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-전체`;
+      const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+      settlementMonth = `${now.getFullYear()}-${monthStr}-전체`;
       
       // 전체 기간인 경우 중복 체크는 하지 않음 (같은 브랜드의 전체 기간 정산은 여러 개 생성 가능)
     }
@@ -406,6 +410,15 @@ export class SettlementsService {
       createdAt: settlementWithBrand.createdAt,
       updatedAt: settlementWithBrand.updatedAt
     });
+    } catch (error) {
+      console.error(`[calculateBrandSettlement] 에러 발생:`, error);
+      console.error(`[calculateBrandSettlement] 에러 메시지:`, error?.message);
+      console.error(`[calculateBrandSettlement] 에러 스택:`, error?.stack);
+      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(`정산 생성 중 오류가 발생했습니다: ${error?.message || '알 수 없는 오류'}`);
+    }
   }
 
   // 브랜드별 정산 조회
