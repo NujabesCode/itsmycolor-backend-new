@@ -359,11 +359,12 @@ export class SettlementsService {
       .leftJoinAndSelect('orderItems.product', 'product')
       .leftJoinAndSelect('product.brandEntity', 'brand')
       .where('order.createdAt >= :startDate', { startDate })
-      .andWhere('order.createdAt <= :endDate', { endDate });
+      .andWhere('order.createdAt <= :endDate', { endDate })
+      .andWhere('order.totalAmount > 0'); // totalAmount > 0인 주문만 조회
     
     const allOrders = await queryBuilder.getMany();
     
-    console.log(`[calculateBrandSettlement] 전체 주문 수: ${allOrders.length}`);
+    console.log(`[calculateBrandSettlement] 전체 주문 수 (totalAmount > 0): ${allOrders.length}`);
     
     // 해당 브랜드의 상품이 포함된 주문만 필터링
     const orders = allOrders.filter(order => {
@@ -377,25 +378,48 @@ export class SettlementsService {
     let totalSales = 0;
     const orderIds = new Set<string>();
     
+    // 디버깅: 주문별 상세 정보 로깅
     for (const order of orders) {
-      if (!order.orderItems || order.orderItems.length === 0) continue;
+      if (!order.orderItems || order.orderItems.length === 0) {
+        console.log(`[calculateBrandSettlement] 주문 ${order.id}: orderItems가 없음`);
+        continue;
+      }
+      
+      console.log(`[calculateBrandSettlement] 주문 ${order.id} 분석: orderItems 수=${order.orderItems.length}`);
       
       // 해당 브랜드의 상품만 필터링하여 금액 계산
-      const brandItems = order.orderItems.filter(item => 
-        item.product?.brandEntity?.id === brandId
-      );
+      const brandItems = order.orderItems.filter(item => {
+        const itemBrandId = item.product?.brandEntity?.id;
+        const matches = itemBrandId === brandId;
+        if (matches) {
+          console.log(`[calculateBrandSettlement] 주문 ${order.id}: 브랜드 매칭 상품 발견 - productId=${item.product?.id}, price=${item.price}, quantity=${item.quantity}`);
+        }
+        return matches;
+      });
       
-      if (brandItems.length === 0) continue;
+      if (brandItems.length === 0) {
+        console.log(`[calculateBrandSettlement] 주문 ${order.id}: 해당 브랜드(${brandId}) 상품 없음`);
+        // 디버깅: 주문의 모든 상품 브랜드 ID 출력
+        const allBrandIds = order.orderItems.map(item => item.product?.brandEntity?.id).filter(Boolean);
+        console.log(`[calculateBrandSettlement] 주문 ${order.id}: 포함된 브랜드 IDs:`, allBrandIds);
+        continue;
+      }
       
       // 해당 브랜드 상품의 총액 계산 (수량 * 가격)
       const brandTotal = brandItems.reduce((sum, item) => {
-        return sum + ((item.price || 0) * (item.quantity || 0));
+        const itemTotal = (item.price || 0) * (item.quantity || 0);
+        console.log(`[calculateBrandSettlement] 주문 ${order.id}: 상품 금액 계산 - price=${item.price}, quantity=${item.quantity}, total=${itemTotal}`);
+        return sum + itemTotal;
       }, 0);
+      
+      console.log(`[calculateBrandSettlement] 주문 ${order.id}: 브랜드 상품 ${brandItems.length}개, 브랜드 총액 ${brandTotal}원`);
       
       if (brandTotal > 0) {
         totalSales += brandTotal;
         orderIds.add(order.id);
-        console.log(`[calculateBrandSettlement] 주문 ${order.id}: 브랜드 상품 ${brandItems.length}개, 금액 ${brandTotal}원`);
+        console.log(`[calculateBrandSettlement] 주문 ${order.id}: 정산에 포함됨 (누적 총매출: ${totalSales}원)`);
+      } else {
+        console.log(`[calculateBrandSettlement] 주문 ${order.id}: 브랜드 총액이 0이므로 제외`);
       }
     }
     
@@ -403,7 +427,14 @@ export class SettlementsService {
     console.log(`[calculateBrandSettlement] 총 매출:`, totalSales);
     
     if (totalSales === 0) {
-      throw new BadRequestException(`${settlementMonth} 기간에 ${brandId} 브랜드의 정산할 주문이 없습니다.`);
+      // 더 자세한 에러 메시지 제공
+      const brandName = orders.length > 0 ? '해당 브랜드' : '해당 브랜드';
+      const orderCount = allOrders.length;
+      const brandOrderCount = orders.length;
+      throw new BadRequestException(
+        `${settlementMonth} 기간에 ${brandId} 브랜드의 정산할 주문이 없습니다. ` +
+        `(전체 주문 수: ${orderCount}, 해당 브랜드 포함 주문 수: ${brandOrderCount})`
+      );
     }
     
     // 수수료 계산
