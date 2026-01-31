@@ -595,6 +595,27 @@ export class ProductsService {
       });
     } else {
       console.log(`[findAllForAdmin] 'ttt' 상품을 현재 페이지에서 찾을 수 없습니다.`);
+      // DB에서 직접 확인
+      const directCheck = await this.productRepository.findOne({
+        where: [
+          { name: 'ttt', isDeleted: false },
+          { id: '911f6a77-f69d-47ce-8b96-79e826fec6d3', isDeleted: false }
+        ],
+        relations: ['brandEntity'],
+      });
+      if (directCheck) {
+        console.log(`[findAllForAdmin] DB에서 직접 조회한 'ttt' 상품:`, {
+          id: directCheck.id,
+          name: directCheck.name,
+          isAvailable: directCheck.isAvailable,
+          isDeleted: directCheck.isDeleted,
+          brandId: directCheck.brandEntity?.id,
+          brandName: directCheck.brandEntity?.name,
+          createdAt: directCheck.createdAt,
+        });
+      } else {
+        console.log(`[findAllForAdmin] DB에서도 'ttt' 상품을 찾을 수 없습니다.`);
+      }
     }
 
     const lastPage = Math.ceil(total / limit);
