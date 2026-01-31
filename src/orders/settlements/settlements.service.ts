@@ -93,6 +93,7 @@ export class SettlementsService {
       commissionAmount: settlement.commissionAmount,
       actualSettlementAmount: settlement.actualSettlementAmount,
       status: settlement.status,
+      brand: settlement.brand,
       bank: settlement.bank,
       accountNumber: settlement.accountNumber,
       accountHolder: settlement.accountHolder,
@@ -249,6 +250,70 @@ export class SettlementsService {
     });
     
     return this.settlementRepository.save(settlement);
+  }
+
+  // 브랜드별 정산 자동 계산
+  async calculateBrandSettlement(
+    brandId: string,
+    year: number,
+    month: number,
+    commissionRate: number = 12,
+  ): Promise<SettlementResponseDto> {
+    // 해당 월의 시작일과 종료일 계산
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    endDate.setHours(23, 59, 59, 999);
+    
+    const settlementMonth = `${year}-${month.toString().padStart(2, '0')}`;
+    
+    // 해당 브랜드의 해당 월 정산이 이미 있는지 확인
+    const existingSettlement = await this.settlementRepository.findOne({
+      where: { brandId, settlementMonth },
+    });
+    
+    if (existingSettlement) {
+      throw new BadRequestException(`${settlementMonth} 기간의 ${brandId} 브랜드 정산이 이미 존재합니다.`);
+    }
+    
+    // 해당 브랜드의 해당 기간 내 주문 조회
+    const { orders } = await this.ordersService.findByBrandId(brandId, {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+      limit: 10000, // 모든 주문 조회
+    });
+    
+    // totalAmount > 0인 주문만 필터링
+    const filteredOrders = orders.filter(order => order.totalAmount && order.totalAmount > 0);
+    
+    console.log(`[calculateBrandSettlement] 브랜드 ${brandId}, ${settlementMonth} 기간 내 주문 수:`, filteredOrders.length);
+    
+    if (filteredOrders.length === 0) {
+      throw new BadRequestException(`${settlementMonth} 기간에 ${brandId} 브랜드의 정산할 주문이 없습니다.`);
+    }
+    
+    // 총 매출 계산
+    const totalSales = filteredOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+    
+    // 수수료 계산
+    const commissionAmount = Math.round(totalSales * (commissionRate / 100));
+    
+    // 실 정산 금액
+    const actualSettlementAmount = totalSales - commissionAmount;
+    
+    // 정산 정보 생성
+    const createSettlementDto: CreateSettlementDto = {
+      settlementMonth,
+      totalSales,
+      commissionRate,
+      commissionAmount,
+      actualSettlementAmount,
+      brandId,
+    };
+    
+    const settlement = this.settlementRepository.create(createSettlementDto);
+    const savedSettlement = await this.settlementRepository.save(settlement);
+    
+    return this.findOne(savedSettlement.id);
   }
 
   // 브랜드별 정산 조회
