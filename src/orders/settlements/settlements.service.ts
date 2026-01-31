@@ -289,6 +289,8 @@ export class SettlementsService {
       // 전체 기간인 경우 현재 날짜로 설정 (YYYY-MM 형식)
       const now = new Date();
       settlementMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-전체`;
+      
+      // 전체 기간인 경우 중복 체크는 하지 않음 (같은 브랜드의 전체 기간 정산은 여러 개 생성 가능)
     }
     
     // 해당 브랜드의 해당 기간 내 주문 조회
