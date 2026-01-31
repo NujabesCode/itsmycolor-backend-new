@@ -313,7 +313,32 @@ export class SettlementsService {
     const settlement = this.settlementRepository.create(createSettlementDto);
     const savedSettlement = await this.settlementRepository.save(settlement);
     
-    return this.findOne(savedSettlement.id);
+    // 저장된 정산을 다시 조회하여 브랜드 정보 포함
+    const settlementWithBrand = await this.settlementRepository.findOne({
+      where: { id: savedSettlement.id },
+      relations: ['brand'],
+    });
+    
+    if (!settlementWithBrand) {
+      throw new NotFoundException('정산 생성 후 조회에 실패했습니다.');
+    }
+    
+    return new SettlementResponseDto({
+      id: settlementWithBrand.id,
+      settlementMonth: settlementWithBrand.settlementMonth,
+      totalSales: settlementWithBrand.totalSales,
+      commissionRate: settlementWithBrand.commissionRate,
+      commissionAmount: settlementWithBrand.commissionAmount,
+      actualSettlementAmount: settlementWithBrand.actualSettlementAmount,
+      status: settlementWithBrand.status,
+      brand: settlementWithBrand.brand,
+      bank: settlementWithBrand.bank,
+      accountNumber: settlementWithBrand.accountNumber,
+      accountHolder: settlementWithBrand.accountHolder,
+      settledAt: settlementWithBrand.settledAt,
+      createdAt: settlementWithBrand.createdAt,
+      updatedAt: settlementWithBrand.updatedAt
+    });
   }
 
   // 브랜드별 정산 조회
