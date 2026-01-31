@@ -278,23 +278,50 @@ export class SettlementsService {
     }
     
     // 해당 브랜드의 해당 기간 내 주문 조회
-    const { orders } = await this.ordersService.findByBrandId(brandId, {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-      limit: 10000, // 모든 주문 조회
-    });
+    // 주문 전체가 아닌 해당 브랜드의 상품만 포함된 주문 아이템을 조회해야 함
+    const orders = await this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.orderItems', 'orderItems')
+      .leftJoinAndSelect('orderItems.product', 'product')
+      .leftJoinAndSelect('product.brandEntity', 'brand')
+      .where('brand.id = :brandId', { brandId })
+      .andWhere('order.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .getMany();
     
-    // totalAmount > 0인 주문만 필터링
-    const filteredOrders = orders.filter(order => order.totalAmount && order.totalAmount > 0);
+    // 해당 브랜드의 상품 금액만 계산
+    let totalSales = 0;
+    const orderIds = new Set<string>();
     
-    console.log(`[calculateBrandSettlement] 브랜드 ${brandId}, ${settlementMonth} 기간 내 주문 수:`, filteredOrders.length);
-    
-    if (filteredOrders.length === 0) {
-      throw new BadRequestException(`${settlementMonth} 기간에 ${brandId} 브랜드의 정산할 주문이 없습니다.`);
+    for (const order of orders) {
+      if (!order.orderItems || order.orderItems.length === 0) continue;
+      
+      // 해당 브랜드의 상품만 필터링하여 금액 계산
+      const brandItems = order.orderItems.filter(item => 
+        item.product?.brandEntity?.id === brandId
+      );
+      
+      if (brandItems.length === 0) continue;
+      
+      // 해당 브랜드 상품의 총액 계산 (수량 * 가격)
+      const brandTotal = brandItems.reduce((sum, item) => {
+        return sum + ((item.price || 0) * (item.quantity || 0));
+      }, 0);
+      
+      if (brandTotal > 0) {
+        totalSales += brandTotal;
+        orderIds.add(order.id);
+      }
     }
     
-    // 총 매출 계산
-    const totalSales = filteredOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+    console.log(`[calculateBrandSettlement] 브랜드 ${brandId}, ${settlementMonth} 기간 내 주문 수:`, orderIds.size);
+    console.log(`[calculateBrandSettlement] 총 매출:`, totalSales);
+    
+    if (totalSales === 0) {
+      throw new BadRequestException(`${settlementMonth} 기간에 ${brandId} 브랜드의 정산할 주문이 없습니다.`);
+    }
     
     // 수수료 계산
     const commissionAmount = Math.round(totalSales * (commissionRate / 100));
