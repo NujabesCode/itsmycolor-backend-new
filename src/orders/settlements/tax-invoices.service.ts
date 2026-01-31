@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TaxInvoice, TaxInvoiceStatus } from './entities/tax-invoice.entity';
-import { Settlement } from './entities/settlement.entity';
+import { Settlement, SettlementStatus } from './entities/settlement.entity';
 import { Brand } from '../../brands/entities/brand.entity';
 
 @Injectable()
@@ -16,6 +16,26 @@ export class TaxInvoicesService {
 
   // 세금계산서 목록 조회
   async findAll(): Promise<TaxInvoice[]> {
+    // 정산 완료되었지만 세금계산서가 없는 경우 자동 생성
+    const completedSettlements = await this.settlementRepository.find({
+      where: { status: SettlementStatus.COMPLETED },
+      relations: ['brand'],
+    });
+
+    for (const settlement of completedSettlements) {
+      const existingInvoice = await this.taxInvoiceRepository.findOne({
+        where: { settlementId: settlement.id },
+      });
+
+      if (!existingInvoice) {
+        try {
+          await this.createForSettlement(settlement.id);
+        } catch (error) {
+          console.error(`세금계산서 자동 생성 실패 (정산 ID: ${settlement.id}):`, error);
+        }
+      }
+    }
+
     return this.taxInvoiceRepository.find({
       relations: ['settlement', 'brand'],
       order: { createdAt: 'DESC' },
