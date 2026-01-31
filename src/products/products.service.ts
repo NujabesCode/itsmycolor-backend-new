@@ -92,17 +92,24 @@ export class ProductsService {
     }
 
     // 판매자가 상품을 등록할 때는 항상 승인 대기 상태로 시작
-    const product = this.productRepository.create({
+    // DTO에서 isAvailable이 전달되더라도 무시하고 항상 false로 설정
+    const productData = {
       ...createProductDto,
       brandEntity: { id: createProductDto.brandId },
-      // 판매자 등록 시 항상 isAvailable = false (승인 대기)
+      // 판매자 등록 시 항상 isAvailable = false (승인 대기) - DTO 값 무시
       isAvailable: false,
-    });
+      // isDeleted도 명시적으로 false로 설정
+      isDeleted: false,
+    };
+    
+    const product = this.productRepository.create(productData);
     
     console.log('[ProductsService.create] 상품 생성:', {
       name: product.name,
       brandId: createProductDto.brandId,
       isAvailable: product.isAvailable,
+      isDeleted: product.isDeleted,
+      brandEntity: product.brandEntity,
     });
     
     // 이미지 업로드 및 URL 저장
