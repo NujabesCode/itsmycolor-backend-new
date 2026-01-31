@@ -123,10 +123,17 @@ export class SettlementsController {
     @Query('brandId') brandId: string,
     @Query('year') year?: number,
     @Query('month') month?: number,
-    @Query('commissionRate') commissionRate?: number,
+    @Query('commissionRate') commissionRate?: string | number,
   ) {
     // commissionRate가 undefined일 때만 기본값 12 사용 (0도 유효한 값)
-    const finalCommissionRate = commissionRate !== undefined ? commissionRate : 12;
+    // 쿼리 파라미터는 문자열로 전달될 수 있으므로 명시적으로 숫자로 변환
+    let finalCommissionRate = 12;
+    if (commissionRate !== undefined && commissionRate !== null) {
+      const parsed = typeof commissionRate === 'string' ? parseFloat(commissionRate) : commissionRate;
+      if (!isNaN(parsed)) {
+        finalCommissionRate = parsed;
+      }
+    }
     return this.settlementsService.calculateBrandSettlement(brandId, year, month, finalCommissionRate);
   }
 
