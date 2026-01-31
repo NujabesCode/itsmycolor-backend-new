@@ -96,6 +96,20 @@ export class SettlementsController {
     return this.settlementsService.calculateMonthlySettlement(year, month);
   }
 
+  @Get('brands-with-orders')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '해당 년월에 주문이 있는 브랜드 목록 조회' })
+  @ApiResponse({ status: 200, description: '브랜드 목록 반환' })
+  @ApiQuery({ name: 'year', required: true, description: '년도' })
+  @ApiQuery({ name: 'month', required: true, description: '월' })
+  async getBrandsWithOrders(
+    @Query('year') year: number,
+    @Query('month') month: number,
+  ) {
+    return this.settlementsService.getBrandsWithOrders(year, month);
+  }
+
   @Post('calculate-brand')
   @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()

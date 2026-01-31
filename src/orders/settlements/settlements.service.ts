@@ -9,13 +9,15 @@ import {
   SettlementStatsDto,
 } from './dto/settlement.dto';
 import { OrdersService } from '../orders.service';
-import { OrderStatus } from '../entities/order.entity';
+import { OrderStatus, Order } from '../entities/order.entity';
 
 @Injectable()
 export class SettlementsService {
   constructor(
     @InjectRepository(Settlement)
     private settlementRepository: Repository<Settlement>,
+    @InjectRepository(Order)
+    private orderRepository: Repository<Order>,
     private ordersService: OrdersService,
   ) {}
 
@@ -348,6 +350,47 @@ export class SettlementsService {
       where: { brandId },
       order: { settlementMonth: 'DESC' },
     });
+  }
+
+  // 해당 년월에 주문이 있는 브랜드 목록 조회
+  async getBrandsWithOrders(year: number, month: number): Promise<any[]> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    endDate.setHours(23, 59, 59, 999);
+    
+    // 해당 기간에 totalAmount > 0인 주문이 있는 브랜드 조회
+    const orders = await this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.orderItems', 'orderItems')
+      .leftJoinAndSelect('orderItems.product', 'product')
+      .leftJoinAndSelect('product.brandEntity', 'brand')
+      .where('order.createdAt BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .andWhere('order.totalAmount > 0')
+      .getMany();
+    
+    // 브랜드별로 그룹화하여 중복 제거
+    const brandMap = new Map<string, any>();
+    
+    for (const order of orders) {
+      if (order.orderItems && order.orderItems.length > 0) {
+        for (const item of order.orderItems) {
+          if (item.product?.brandEntity) {
+            const brandId = item.product.brandEntity.id;
+            if (!brandMap.has(brandId)) {
+              brandMap.set(brandId, {
+                id: item.product.brandEntity.id,
+                name: item.product.brandEntity.name,
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    return Array.from(brandMap.values());
   }
 
   // FC-003: 정산 확정 처리 (지급 예정 상태로 변경)
