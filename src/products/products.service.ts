@@ -137,7 +137,36 @@ export class ProductsService {
     }
     
     const savedProduct = await this.productRepository.save(product);
-    console.log('[ProductsService] 저장된 상품의 imageUrl:', savedProduct.imageUrl);
+    
+    console.log('[ProductsService.create] 상품 저장 완료:', {
+      id: savedProduct.id,
+      name: savedProduct.name,
+      brandId: savedProduct.brandId,
+      isAvailable: savedProduct.isAvailable,
+      isDeleted: savedProduct.isDeleted,
+      imageUrl: savedProduct.imageUrl,
+      createdAt: savedProduct.createdAt,
+    });
+    
+    // 저장 후 실제로 DB에 저장되었는지 확인
+    const verifyProduct = await this.productRepository.findOne({
+      where: { id: savedProduct.id },
+      relations: ['brandEntity'],
+    });
+    
+    if (verifyProduct) {
+      console.log('[ProductsService.create] ✅ DB 저장 확인 성공:', {
+        id: verifyProduct.id,
+        name: verifyProduct.name,
+        isAvailable: verifyProduct.isAvailable,
+        isDeleted: verifyProduct.isDeleted,
+        brandId: verifyProduct.brandId,
+        brandName: verifyProduct.brandEntity?.name,
+      });
+    } else {
+      console.error('[ProductsService.create] ⚠️ DB 저장 확인 실패: 상품을 찾을 수 없습니다.');
+    }
+    
     return new ProductDetailResponseDto(savedProduct);
   }
 
