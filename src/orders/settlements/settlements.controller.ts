@@ -59,6 +59,29 @@ export class SettlementsController {
     return this.settlementsService.getStats(startDate, endDate);
   }
 
+  @Get('commission-settings')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '수수료 설정 조회' })
+  @ApiResponse({ status: 200, description: '수수료 설정 조회 성공' })
+  async getCommissionSettings() {
+    return this.settlementsService.getCommissionSettings();
+  }
+
+  @Get('brands-with-orders')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '해당 년월에 주문이 있는 브랜드 목록 조회' })
+  @ApiResponse({ status: 200, description: '브랜드 목록 반환' })
+  @ApiQuery({ name: 'year', required: true, description: '년도' })
+  @ApiQuery({ name: 'month', required: true, description: '월' })
+  async getBrandsWithOrders(
+    @Query('year') year: number,
+    @Query('month') month: number,
+  ) {
+    return this.settlementsService.getBrandsWithOrders(year, month);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
@@ -67,6 +90,24 @@ export class SettlementsController {
   @ApiParam({ name: 'id', description: '정산 ID' })
   async findOne(@Param('id') id: string) {
     return this.settlementsService.findOne(id);
+  }
+
+  @Put('commission-settings')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '수수료 설정 업데이트' })
+  @ApiResponse({ status: 200, description: '수수료 설정 업데이트 성공' })
+  async updateCommissionSettings(@Body() body: { defaultRate: number }) {
+    return this.settlementsService.updateCommissionSettings(body.defaultRate);
+  }
+
+  @Put('update-all-commission-rates')
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '모든 정산의 수수료율을 12%로 일괄 업데이트' })
+  @ApiResponse({ status: 200, description: '수수료율 일괄 업데이트 완료' })
+  async updateAllCommissionRatesTo12() {
+    return this.settlementsService.updateAllCommissionRatesTo12();
   }
 
   @Put(':id')
@@ -96,20 +137,6 @@ export class SettlementsController {
     return this.settlementsService.calculateMonthlySettlement(year, month);
   }
 
-  @Get('brands-with-orders')
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '해당 년월에 주문이 있는 브랜드 목록 조회' })
-  @ApiResponse({ status: 200, description: '브랜드 목록 반환' })
-  @ApiQuery({ name: 'year', required: true, description: '년도' })
-  @ApiQuery({ name: 'month', required: true, description: '월' })
-  async getBrandsWithOrders(
-    @Query('year') year: number,
-    @Query('month') month: number,
-  ) {
-    return this.settlementsService.getBrandsWithOrders(year, month);
-  }
-
   @Post('calculate-brand')
   @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
@@ -125,12 +152,12 @@ export class SettlementsController {
     @Query('month') month?: number,
     @Query('commissionRate') commissionRate?: string | number,
   ) {
-    // commissionRate가 undefined일 때만 기본값 12 사용 (0도 유효한 값)
+    // commissionRate가 undefined이거나 null이거나 유효하지 않은 값이면 기본값 12 사용
     // 쿼리 파라미터는 문자열로 전달될 수 있으므로 명시적으로 숫자로 변환
-    let finalCommissionRate = 12;
-    if (commissionRate !== undefined && commissionRate !== null) {
+    let finalCommissionRate = 12; // 기본값 12%
+    if (commissionRate !== undefined && commissionRate !== null && commissionRate !== '') {
       const parsed = typeof commissionRate === 'string' ? parseFloat(commissionRate) : commissionRate;
-      if (!isNaN(parsed)) {
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
         finalCommissionRate = parsed;
       }
     }
