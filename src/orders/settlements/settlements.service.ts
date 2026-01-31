@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Settlement, SettlementStatus } from './entities/settlement.entity';
+import { Commission } from './entities/commission.entity';
 import {
   CreateSettlementDto,
   UpdateSettlementDto,
@@ -18,6 +19,8 @@ export class SettlementsService {
     private settlementRepository: Repository<Settlement>,
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
+    @InjectRepository(Commission)
+    private commissionRepository: Repository<Commission>,
     private ordersService: OrdersService,
   ) {}
 
@@ -164,9 +167,80 @@ export class SettlementsService {
     }
 
     Object.assign(settlement, updateSettlementDto);
+    
+    // 수수료율이 변경되면 수수료 금액과 실 정산 금액 재계산
+    if (updateSettlementDto.commissionRate !== undefined) {
+      settlement.commissionAmount = Math.round(settlement.totalSales * (updateSettlementDto.commissionRate / 100));
+      settlement.actualSettlementAmount = settlement.totalSales - settlement.commissionAmount;
+    }
+    
     await this.settlementRepository.save(settlement);
     
     return this.findOne(id);
+  }
+
+  // 모든 정산의 수수료율을 12%로 일괄 업데이트
+  async updateAllCommissionRatesTo12(): Promise<{ updated: number }> {
+    const settlements = await this.settlementRepository.find();
+    
+    console.log(`[updateAllCommissionRatesTo12] 전체 정산 수: ${settlements.length}`);
+    
+    let updatedCount = 0;
+    for (const settlement of settlements) {
+      // 수수료율이 12가 아닌 경우 모두 업데이트 (부동소수점 비교를 위해 Math.abs 사용)
+      if (Math.abs(settlement.commissionRate - 12) > 0.01) {
+        console.log(`[updateAllCommissionRatesTo12] 정산 ${settlement.id} 업데이트: ${settlement.commissionRate}% -> 12%`);
+        settlement.commissionRate = 12;
+        settlement.commissionAmount = Math.round(settlement.totalSales * (12 / 100));
+        settlement.actualSettlementAmount = settlement.totalSales - settlement.commissionAmount;
+        await this.settlementRepository.save(settlement);
+        updatedCount++;
+      }
+    }
+    
+    console.log(`[updateAllCommissionRatesTo12] 업데이트된 정산 수: ${updatedCount}`);
+    
+    return { updated: updatedCount };
+  }
+
+  // 수수료 설정 조회
+  async getCommissionSettings(): Promise<{ defaultRate: number }> {
+    // 가장 최근 설정을 가져오거나, 없으면 기본값 반환
+    const commission = await this.commissionRepository.findOne({
+      order: { createdAt: 'DESC' },
+    });
+
+    // 설정이 없으면 기본값 반환 (DB에 저장하지 않음)
+    if (!commission) {
+      return { defaultRate: 12 };
+    }
+
+    return { defaultRate: commission.defaultRate };
+  }
+
+  // 수수료 설정 업데이트
+  async updateCommissionSettings(defaultRate: number): Promise<{ defaultRate: number }> {
+    if (defaultRate < 0 || defaultRate > 100) {
+      throw new BadRequestException('수수료율은 0% 이상 100% 이하여야 합니다.');
+    }
+
+    // 가장 최근 설정을 가져오거나 새로 생성
+    let commission = await this.commissionRepository.findOne({
+      order: { createdAt: 'DESC' },
+    });
+
+    // 설정이 없으면 생성
+    if (!commission) {
+      commission = this.commissionRepository.create({
+        defaultRate,
+      });
+    } else {
+      commission.defaultRate = defaultRate;
+    }
+
+    await this.commissionRepository.save(commission);
+
+    return { defaultRate: commission.defaultRate };
   }
 
   // 엔티티를 직접 반환하는 메서드 추가
@@ -310,10 +384,12 @@ export class SettlementsService {
     brandId: string,
     year?: number,
     month?: number,
-    commissionRate: number = 12, // 기본값은 12이지만, 컨트롤러에서 0도 전달 가능
+    commissionRate?: number, // 선택적 파라미터
   ): Promise<SettlementResponseDto> {
+    // 수수료율이 없으면 기본값 12%로 설정
+    const finalCommissionRate = commissionRate !== undefined && commissionRate !== null ? commissionRate : 12;
     try {
-      console.log(`[calculateBrandSettlement] 시작: brandId=${brandId}, year=${year}, month=${month}, commissionRate=${commissionRate}`);
+      console.log(`[calculateBrandSettlement] 시작: brandId=${brandId}, year=${year}, month=${month}, commissionRate=${finalCommissionRate}`);
       
       // 년도와 월이 제공되지 않으면 전체 기간으로 설정
     let startDate: Date;
@@ -465,7 +541,7 @@ export class SettlementsService {
     }
     
     // 수수료 계산
-    const commissionAmount = Math.round(totalSales * (commissionRate / 100));
+    const commissionAmount = Math.round(totalSales * (finalCommissionRate / 100));
     
     // 실 정산 금액
     const actualSettlementAmount = totalSales - commissionAmount;
@@ -474,7 +550,7 @@ export class SettlementsService {
     const settlement = this.settlementRepository.create({
       settlementMonth,
       totalSales,
-      commissionRate,
+      commissionRate: finalCommissionRate,
       commissionAmount,
       actualSettlementAmount,
       brandId,

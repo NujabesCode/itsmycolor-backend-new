@@ -31,6 +31,11 @@ export class UpdateSettlementDto {
   @IsOptional()
   status?: SettlementStatus;
 
+  @ApiProperty({ description: '수수료율 (%)', example: 12 })
+  @IsNumber()
+  @IsOptional()
+  commissionRate?: number;
+
   @ApiProperty({ description: '정산 은행', example: 'KB국민' })
   @IsString()
   @IsOptional()
