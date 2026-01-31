@@ -366,10 +366,39 @@ export class SettlementsService {
     
     console.log(`[calculateBrandSettlement] 전체 주문 수 (totalAmount > 0): ${allOrders.length}`);
     
+    // 디버깅: 각 주문의 orderItems와 브랜드 정보 확인
+    allOrders.forEach((order, idx) => {
+      console.log(`[calculateBrandSettlement] 주문 ${idx + 1} (ID: ${order.id}):`);
+      console.log(`  - orderItems 수: ${order.orderItems?.length || 0}`);
+      if (order.orderItems && order.orderItems.length > 0) {
+        order.orderItems.forEach((item, itemIdx) => {
+          const productId = item.product?.id || '없음';
+          const brandIdInItem = item.product?.brandEntity?.id || '없음';
+          const brandName = item.product?.brandEntity?.name || '없음';
+          console.log(`  - 상품 ${itemIdx + 1}: productId=${productId}, brandId=${brandIdInItem}, brandName=${brandName}, price=${item.price}, quantity=${item.quantity}`);
+        });
+      }
+    });
+    
     // 해당 브랜드의 상품이 포함된 주문만 필터링
     const orders = allOrders.filter(order => {
-      if (!order.orderItems || order.orderItems.length === 0) return false;
-      return order.orderItems.some(item => item.product?.brandEntity?.id === brandId);
+      if (!order.orderItems || order.orderItems.length === 0) {
+        console.log(`[calculateBrandSettlement] 주문 ${order.id}: orderItems가 없음`);
+        return false;
+      }
+      const hasBrandItem = order.orderItems.some(item => {
+        const itemBrandId = item.product?.brandEntity?.id;
+        const matches = itemBrandId === brandId;
+        if (matches) {
+          console.log(`[calculateBrandSettlement] 주문 ${order.id}: 브랜드 매칭 발견 - itemBrandId=${itemBrandId}, targetBrandId=${brandId}`);
+        }
+        return matches;
+      });
+      if (!hasBrandItem) {
+        const brandIds = order.orderItems.map(item => item.product?.brandEntity?.id).filter(Boolean);
+        console.log(`[calculateBrandSettlement] 주문 ${order.id}: 브랜드 매칭 안됨 - 포함된 브랜드 IDs:`, brandIds);
+      }
+      return hasBrandItem;
     });
     
     console.log(`[calculateBrandSettlement] 해당 브랜드(${brandId}) 포함 주문 수: ${orders.length}`);
