@@ -615,6 +615,25 @@ export class ProductsService {
         });
       } else {
         console.log(`[findAllForAdmin] DB에서도 'ttt' 상품을 찾을 수 없습니다.`);
+        // 삭제된 상품도 포함해서 확인
+        const deletedCheck = await this.productRepository.findOne({
+          where: [
+            { name: 'ttt' },
+            { id: '911f6a77-f69d-47ce-8b96-79e826fec6d3' }
+          ],
+          relations: ['brandEntity'],
+        });
+        if (deletedCheck) {
+          console.log(`[findAllForAdmin] 삭제된 상품으로 발견:`, {
+            id: deletedCheck.id,
+            name: deletedCheck.name,
+            isAvailable: deletedCheck.isAvailable,
+            isDeleted: deletedCheck.isDeleted,
+            brandId: deletedCheck.brandEntity?.id,
+            brandName: deletedCheck.brandEntity?.name,
+            createdAt: deletedCheck.createdAt,
+          });
+        }
       }
     }
 
