@@ -206,16 +206,17 @@ export class SettlementsService {
   // 수수료 설정 조회
   async getCommissionSettings(): Promise<{ defaultRate: number }> {
     // 가장 최근 설정을 가져오거나, 없으면 기본값 반환
-    const commission = await this.commissionRepository.findOne({
+    const commissions = await this.commissionRepository.find({
       order: { createdAt: 'DESC' },
+      take: 1, // 최신 1개만 가져오기
     });
 
     // 설정이 없으면 기본값 반환 (DB에 저장하지 않음)
-    if (!commission) {
+    if (!commissions || commissions.length === 0) {
       return { defaultRate: 12 };
     }
 
-    return { defaultRate: commission.defaultRate };
+    return { defaultRate: commissions[0].defaultRate };
   }
 
   // 수수료 설정 업데이트
@@ -225,16 +226,20 @@ export class SettlementsService {
     }
 
     // 가장 최근 설정을 가져오거나 새로 생성
-    let commission = await this.commissionRepository.findOne({
+    const commissions = await this.commissionRepository.find({
       order: { createdAt: 'DESC' },
+      take: 1, // 최신 1개만 가져오기
     });
 
+    let commission: Commission;
+    
     // 설정이 없으면 생성
-    if (!commission) {
+    if (!commissions || commissions.length === 0) {
       commission = this.commissionRepository.create({
         defaultRate,
       });
     } else {
+      commission = commissions[0];
       commission.defaultRate = defaultRate;
     }
 
