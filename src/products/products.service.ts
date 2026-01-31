@@ -541,6 +541,12 @@ export class ProductsService {
       .take(limit)
       .getManyAndCount();
 
+    console.log(`[findAllForAdmin] 조회된 상품 수: ${products.length}, 전체: ${total}`);
+    console.log(`[findAllForAdmin] isAvailable 상태별 개수:`, {
+      available: products.filter(p => p.isAvailable).length,
+      pending: products.filter(p => !p.isAvailable).length,
+    });
+
     const lastPage = Math.ceil(total / limit);
 
     return {

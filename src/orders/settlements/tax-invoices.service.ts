@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { TaxInvoice, TaxInvoiceStatus } from './entities/tax-invoice.entity';
 import { Settlement, SettlementStatus } from './entities/settlement.entity';
 import { Brand } from '../../brands/entities/brand.entity';
@@ -63,10 +63,23 @@ export class TaxInvoicesService {
     }
 
     // 세금계산서 번호 생성 (YYYYMMDD-XXXX 형식)
+    // 날짜별 순차 번호로 생성하여 중복 방지
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const randomStr = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    const invoiceNumber = `${dateStr}-${randomStr}`;
+    
+    // 해당 날짜에 발행된 세금계산서 개수 조회
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    
+    const todayInvoices = await this.taxInvoiceRepository.find({
+      where: {
+        createdAt: Between(startOfDay, endOfDay),
+      },
+    });
+    
+    // 오늘 발행된 세금계산서 개수 + 1을 순번으로 사용
+    const sequenceNumber = (todayInvoices.length + 1).toString().padStart(4, '0');
+    const invoiceNumber = `${dateStr}-${sequenceNumber}`;
 
     // 공급가액, 부가세, 합계금액 계산
     const supplyAmount = settlement.actualSettlementAmount;
