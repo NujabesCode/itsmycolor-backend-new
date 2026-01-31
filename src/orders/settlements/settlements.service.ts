@@ -299,15 +299,15 @@ export class SettlementsService {
     
     // 해당 브랜드의 해당 기간 내 주문 조회
     // 모든 주문을 가져온 후 orderItems에서 해당 브랜드 상품만 필터링
+    console.log(`[calculateBrandSettlement] 날짜 범위: ${startDate.toISOString()} ~ ${endDate.toISOString()}`);
+    
     const queryBuilder = this.orderRepository
       .createQueryBuilder('order')
       .leftJoinAndSelect('order.orderItems', 'orderItems')
       .leftJoinAndSelect('orderItems.product', 'product')
       .leftJoinAndSelect('product.brandEntity', 'brand')
-      .where('order.createdAt BETWEEN :startDate AND :endDate', {
-        startDate,
-        endDate,
-      });
+      .where('order.createdAt >= :startDate', { startDate })
+      .andWhere('order.createdAt <= :endDate', { endDate });
     
     const allOrders = await queryBuilder.getMany();
     
