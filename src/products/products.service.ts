@@ -578,8 +578,24 @@ export class ProductsService {
         isAvailable: p.isAvailable,
         brandId: p.brandEntity?.id || '없음',
         brandName: p.brandEntity?.name || '없음',
+        brandColumn: p.brand || '없음',
+        isDeleted: p.isDeleted,
       });
     });
+    
+    // 특정 상품 검색 (디버깅용)
+    const searchProduct = products.find(p => p.name === 'ttt' || p.id === '911f6a77-f69d-47ce-8b96-79e826fec6d3');
+    if (searchProduct) {
+      console.log(`[findAllForAdmin] 찾은 상품:`, {
+        id: searchProduct.id,
+        name: searchProduct.name,
+        isAvailable: searchProduct.isAvailable,
+        brandId: searchProduct.brandEntity?.id,
+        brandName: searchProduct.brandEntity?.name,
+      });
+    } else {
+      console.log(`[findAllForAdmin] 'ttt' 상품을 현재 페이지에서 찾을 수 없습니다.`);
+    }
 
     const lastPage = Math.ceil(total / limit);
 
