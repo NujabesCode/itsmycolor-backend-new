@@ -343,7 +343,8 @@ export class EmailService {
       // 개발 환경에서는 콘솔에 토큰 출력
       if (process.env.NODE_ENV !== 'production') {
         console.log(`개발 모드 - 비밀번호 변경 토큰: ${user.email} -> ${token}`);
-        console.log(`개발 모드 - 비밀번호 변경 링크: ${this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000')}/find-password?token=${token}`);
+        const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://itsmycolor-frontend.s3-website.ap-northeast-2.amazonaws.com');
+        console.log(`개발 모드 - 비밀번호 변경 링크: ${frontendUrl}/find-password.html?token=${token}`);
       }
     }
 
@@ -351,7 +352,8 @@ export class EmailService {
   }
 
   private async sendPasswordResetLinkEmail(email: string, token: string): Promise<void> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    // 프로덕션 환경에서는 S3 HTTP URL 사용
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://itsmycolor-frontend.s3-website.ap-northeast-2.amazonaws.com');
     // S3 정적 호스팅을 위해 .html 확장자 추가
     const resetLink = `${frontendUrl}/find-password.html?token=${token}`;
     const emailTemplate = this.generatePasswordResetEmailTemplate(resetLink);
